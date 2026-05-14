@@ -1,0 +1,16 @@
+{
+    "id": "75069981-b100-489c-adec-895efcdbeb6c",
+    "version": "0.0.1",
+    "requiredApiVersion": "^1.44.0",
+    "iconFile": "icon.png",
+    "author": {
+        "name": "meet jain",
+        "homepage": "https://github.com/RocketChat/Apps.SpamMonitor",
+        "support": "https://github.com/RocketChat/Apps.SpamMonitor/issues"
+    },
+    "name": "Apps.SpamMonitor",
+    "nameSlug": "appsspammonitor",
+    "classFile": "AppsSpamMonitorApp.ts",
+    "description": "Automatically detects and flags spam from new users before it reaches Rocket.Chats community",
+    "implements": []
+}
