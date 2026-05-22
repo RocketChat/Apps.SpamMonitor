@@ -19,6 +19,7 @@
         "prettier-check": "prettier --config .prettierrc '**.ts' --check"
     },
     "dependencies": {
+        "@rocket.chat/icons": "^0.47.0",
         "@rocket.chat/ui-kit": "^1.0.0"
     }
 }

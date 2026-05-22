@@ -21,7 +21,8 @@ export class MessageCache {
 			if (entries) {
 				const idx = entries.findIndex((e) => e.messageId === messageId);
 				if (idx !== -1) {
-					entries[idx] = {
+					entries.splice(idx, 1);
+					entries.push({
 						hash,
 						messageId,
 						roomId,
@@ -29,7 +30,7 @@ export class MessageCache {
 						normalized,
 						hasUrl,
 						domains,
-					};
+					});
 					return;
 				}
 			}
@@ -117,6 +118,9 @@ export class MessageCache {
 			timestamps.shift();
 		}
 		this.rateTracker.set(userId, timestamps);
+		if (this.rateTracker.size > this.maxTotalUsers) {
+			this.evictLruUser();
+		}
 	}
 
 	public getMessageRate(userId: string, windowMs: number): number {
@@ -185,9 +189,12 @@ export class MessageCache {
 		const cutoff = Date.now() - windowMs;
 		const recent = entries.filter((e) => e.timestamp >= cutoff);
 		if (recent.length !== entries.length) {
-			recent.length === 0
-				? this.cache.delete(userId)
-				: this.cache.set(userId, recent);
+			if (recent.length === 0) {
+				this.cache.delete(userId);
+				this.rateTracker.delete(userId);
+			} else {
+				this.cache.set(userId, recent);
+			}
 		}
 		return recent;
 	}

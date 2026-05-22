@@ -22,6 +22,13 @@ export const ESCALATION_THRESHOLDS: Record<SpammingLevel, number> = {
 	[SpammingLevel.AdminReview]: Infinity,
 };
 
+export const NEXT_LEVEL: Partial<Record<SpammingLevel, SpammingLevel>> = {
+	[SpammingLevel.Clean]: SpammingLevel.Monitored,
+	[SpammingLevel.Monitored]: SpammingLevel.Restricted,
+	[SpammingLevel.Restricted]: SpammingLevel.Suspended,
+	[SpammingLevel.Suspended]: SpammingLevel.AdminReview,
+};
+
 export const COOLDOWN_DURATIONS: Record<SpammingLevel, number> = {
 	[SpammingLevel.Clean]: 0,
 	[SpammingLevel.Monitored]: 5 * 60 * 1000,

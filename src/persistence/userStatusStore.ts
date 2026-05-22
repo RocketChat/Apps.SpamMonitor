@@ -9,6 +9,7 @@ import {
 import {
 	COOLDOWN_DURATIONS,
 	ESCALATION_THRESHOLDS,
+	NEXT_LEVEL,
 	SpammingLevel,
 	UserSpamRecord,
 } from '../definition/spamlevel';
@@ -35,7 +36,9 @@ export class UserStatusStore {
 		const rows = await read
 			.getPersistenceReader()
 			.readByAssociations(UserStatusStore.assocs(userId));
-		return rows.length ? (rows[0] as UserSpamRecord) : null;
+		if (!rows.length) return null;
+		if (!UserStatusStore.isValidRecord(rows[0])) return null;
+		return rows[0] as UserSpamRecord;
 	}
 
 	public static async save(
@@ -75,7 +78,8 @@ export class UserStatusStore {
 			current.spammingLevel < SpammingLevel.AdminReview;
 
 		if (canEscalate) {
-			const nextLevel = (current.spammingLevel + 1) as SpammingLevel;
+			const nextLevel =
+				NEXT_LEVEL[current.spammingLevel] ?? current.spammingLevel;
 			const updated: UserSpamRecord = {
 				userId,
 				username,
@@ -94,11 +98,26 @@ export class UserStatusStore {
 
 		const updated: UserSpamRecord = {
 			...current,
+			username,
 			lastEscalation: now,
 			totalFlags: current.totalFlags + 1,
 			flagsAtLevel: newFlagsAtLevel,
 		};
 		await UserStatusStore.save(persistence, userId, updated);
 		return updated;
+	}
+	private static isValidRecord(row: unknown): row is UserSpamRecord {
+		if (!row || typeof row !== 'object') return false;
+		const r = row as Record<string, unknown>;
+		return (
+			typeof r.userId === 'string' &&
+			typeof r.username === 'string' &&
+			typeof r.spammingLevel === 'number' &&
+			r.spammingLevel in SpammingLevel &&
+			typeof r.cooldownUntil === 'number' &&
+			typeof r.lastEscalation === 'number' &&
+			typeof r.totalFlags === 'number' &&
+			typeof r.flagsAtLevel === 'number'
+		);
 	}
 }
