@@ -28,6 +28,12 @@ export class UserStatusStore {
 			),
 		];
 	}
+	private static scopeAssoc(): RocketChatAssociationRecord {
+		return new RocketChatAssociationRecord(
+			RocketChatAssociationModel.MISC,
+			ASSOC_SCOPE,
+		);
+	}
 
 	public static async get(
 		read: IRead,
@@ -41,6 +47,15 @@ export class UserStatusStore {
 		return rows[0] as UserSpamRecord;
 	}
 
+	public static async getAll(read: IRead): Promise<UserSpamRecord[]> {
+		const rows = await read
+			.getPersistenceReader()
+			.readByAssociation(UserStatusStore.scopeAssoc());
+		return (rows as unknown[])
+			.filter(UserStatusStore.isValidRecord)
+			.filter((r) => r.spammingLevel > SpammingLevel.Clean);
+	}
+
 	public static async save(
 		persistence: IPersistence,
 		userId: string,
@@ -52,7 +67,6 @@ export class UserStatusStore {
 			true,
 		);
 	}
-
 	public static async escalate(
 		read: IRead,
 		persistence: IPersistence,
