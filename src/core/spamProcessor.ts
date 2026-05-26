@@ -7,16 +7,12 @@ import { IMessage } from '@rocket.chat/apps-engine/definition/messages';
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
 import { MessageCache } from './cache/messageCache';
 import { UserStatusStore } from '../persistence/userStatusStore';
-import { AnalysisResult } from '../definition/spamProcessor';
+import { AnalysisResult, SpamConfig } from '../definition/spamProcessor';
 
 export class SpamProcessor {
 	constructor(
 		private readonly cache: MessageCache,
-		private readonly monitoringWindowMs: number,
-		private readonly slidingWindowMs: number,
-		private readonly crossChannelThreshold: number,
-		private readonly rateShortBurst: number = 5,
-		private readonly rateSustained: number = 12,
+		private config: SpamConfig,
 	) {}
 
 	public isNewUser(user: IUser): boolean {
@@ -25,22 +21,12 @@ export class SpamProcessor {
 		}
 		return (
 			Date.now() - new Date(user.createdAt).getTime() <
-			this.monitoringWindowMs
+			this.config.monitoringWindowMs
 		);
 	}
 
-	public updateConfig(
-		monitoringWindowMs: number,
-		slidingWindowMs: number,
-		crossChannelThreshold: number,
-		rateShortBurst: number,
-		rateSustained: number,
-	): void {
-		(this as any).monitoringWindowMs = monitoringWindowMs;
-		(this as any).slidingWindowMs = slidingWindowMs;
-		(this as any).crossChannelThreshold = crossChannelThreshold;
-		(this as any).rateShortBurst = rateShortBurst;
-		(this as any).rateSustained = rateSustained;
+	public updateConfig(config: SpamConfig): void {
+		this.config = { ...config };
 	}
 
 	public async analyzeMessage(
@@ -103,7 +89,13 @@ export class SpamProcessor {
 		};
 
 		// Gate 1 — Exact duplicate
-		if (this.cache.hasExactDuplicate(userId, hash, this.slidingWindowMs)) {
+		if (
+			this.cache.hasExactDuplicate(
+				userId,
+				hash,
+				this.config.slidingWindowMs,
+			)
+		) {
 			return flag('duplicate');
 		}
 
@@ -118,12 +110,12 @@ export class SpamProcessor {
 				userId,
 				normalized,
 				roomId,
-				this.slidingWindowMs,
+				this.config.slidingWindowMs,
 				(a, b) =>
 					this.cosineSimilarity(this.tokenize(a), this.tokenize(b)),
 				simThreshold,
 			);
-			if (fuzzyChannels >= this.crossChannelThreshold) {
+			if (fuzzyChannels >= this.config.crossChannelThreshold) {
 				return flag('polymorphic-spam');
 			}
 		}
@@ -133,24 +125,27 @@ export class SpamProcessor {
 			userId,
 			hash,
 			roomId,
-			this.slidingWindowMs,
+			this.config.slidingWindowMs,
 		);
-		if (crossCount >= this.crossChannelThreshold) {
+		if (crossCount >= this.config.crossChannelThreshold) {
 			return flag('cross-channel');
 		}
 
 		// Gate 4 — Rate flood
 		const rate30s = this.cache.getMessageRate(userId, 30_000);
 		const rate2m = this.cache.getMessageRate(userId, 120_000);
-		if (rate30s >= this.rateShortBurst || rate2m >= this.rateSustained) {
+		if (
+			rate30s >= this.config.rateShortBurst ||
+			rate2m >= this.config.rateSustained
+		) {
 			return flag('rate-flood');
 		}
 
 		// Gate 5 — Room spread
 		const roomSpread = this.cache.getDistinctRooms(userId, 120_000);
 		if (
-			roomSpread >= this.crossChannelThreshold &&
-			rate2m >= this.crossChannelThreshold
+			roomSpread >= this.config.crossChannelThreshold &&
+			rate2m >= this.config.crossChannelThreshold
 		) {
 			return flag('room-spread');
 		}

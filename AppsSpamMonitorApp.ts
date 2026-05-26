@@ -17,13 +17,16 @@ import { IAppInfo } from '@rocket.chat/apps-engine/definition/metadata';
 import { SpamProcessor } from './src/core/spamProcessor';
 import { MessageCache } from './src/core/cache/messageCache';
 import { SpamMonitorCommand } from './src/commands/commandUtilities';
+import { SpamConfig } from './src/definition/spamProcessor';
 
 // Hardcoded defaults — settings will be introduced in a follow-up PR
-const MONITORING_WINDOW_MS = 42 * 24 * 60 * 60 * 1000; // 42 days
-const SLIDING_WINDOW_MS = 5 * 60 * 1000; // 5 min
-const CROSS_CHANNEL_THRESHOLD = 3;
-const RATE_SHORT_BURST = 5;
-const RATE_SUSTAINED = 12;
+const DEFAULT_CONFIG: SpamConfig = {
+	monitoringWindowMs: 42 * 24 * 60 * 60 * 1000, // 42 days
+	slidingWindowMs: 5 * 60 * 1000, // 5 min
+	crossChannelThreshold: 3,
+	rateShortBurst: 5,
+	rateSustained: 12,
+};
 
 export class AppsSpamMonitorApp extends App implements IPostMessageSent {
 	private processor: SpamProcessor;
@@ -38,14 +41,7 @@ export class AppsSpamMonitorApp extends App implements IPostMessageSent {
 		environmentRead: IEnvironmentRead,
 	): Promise<void> {
 		this.cache = new MessageCache();
-		this.processor = new SpamProcessor(
-			this.cache,
-			MONITORING_WINDOW_MS,
-			SLIDING_WINDOW_MS,
-			CROSS_CHANNEL_THRESHOLD,
-			RATE_SHORT_BURST,
-			RATE_SUSTAINED,
-		);
+		this.processor = new SpamProcessor(this.cache, DEFAULT_CONFIG);
 		await super.initialize(configurationExtend, environmentRead);
 	}
 
@@ -60,9 +56,9 @@ export class AppsSpamMonitorApp extends App implements IPostMessageSent {
 	public async executePostMessageSent(
 		message: IMessage,
 		read: IRead,
-		http: IHttp,
+		_http: IHttp,
 		persistence: IPersistence,
-		modify: IModify,
+		_modify: IModify,
 	): Promise<void> {
 		if (!message.sender || !message.room) {
 			return;

@@ -37,7 +37,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 		);
 		const roles = sender.roles || [];
 		if (!roles.includes('admin')) {
-			await handler.sendHelp();
+			await handler.sendNoPermission();
 			return;
 		}
 		const [subcommand] = context.getArguments();
@@ -47,7 +47,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 				await handler.listFlaggedUsers();
 				break;
 			default:
-				await handler.sendNoPermission();
+				await handler.sendHelp();
 				break;
 		}
 	}

@@ -6,3 +6,10 @@ export interface AnalysisResult {
 	trigger: string;
 	record: UserSpamRecord | null;
 }
+export interface SpamConfig {
+	monitoringWindowMs: number;
+	slidingWindowMs: number;
+	crossChannelThreshold: number;
+	rateShortBurst: number;
+	rateSustained: number;
+}
