@@ -1,0 +1,13 @@
+{
+    "antispam_setting_monitoring_window_days_label": "Monitoring Window (days)",
+    "antispam_setting_monitoring_window_days_description": "Track new users for this many days after account creation (default: 42 = 6 weeks)",
+    "antispam_setting_sliding_window_seconds_label": "Sliding Window (seconds)",
+    "antispam_setting_sliding_window_seconds_description": "Time window for detecting duplicate/cross-channel messages (default: 300 = 5 min)",
+    "antispam_setting_cross_channel_threshold_label": "Cross-Channel Threshold",
+    "antispam_setting_cross_channel_threshold_description": "Number of distinct channels a duplicate must appear in to trigger action (default: 3)",
+    "antispam_setting_rate_short_burst_label": "Rate Limit — Short Burst (30s)",
+    "antispam_setting_rate_short_burst_description": "Number of messages allowed per user in a short 30-second burst (default: 5)",
+    "antispam_setting_rate_sustained_label": "Rate Limit — Sustained (2 min)",
+    "antispam_setting_rate_sustained_description": "Number of messages allowed per user over a sustained 2-minute window (default: 12)",
+    "SpamMonitor_Command_Description": "Spam monitor slash command (admin only)"
+}
