@@ -75,35 +75,33 @@ export class AppsSpamMonitorApp extends App implements IPostMessageSent {
 	private async loadSettings(env: IEnvironmentRead): Promise<void> {
 		const settings = env.getSettings();
 
-		const monitoringWindowDays = (await settings.getValueById(
-			AppSetting.MonitoringWindowDays,
-		)) as number;
-		const slidingWindowSeconds = (await settings.getValueById(
-			AppSetting.SlidingWindowSeconds,
-		)) as number;
-		const crossChannelThreshold = (await settings.getValueById(
-			AppSetting.CrossChannelThreshold,
-		)) as number;
-		const rateShortBurst = (await settings.getValueById(
-			AppSetting.RateShortBurst,
-		)) as number;
-		const rateSustained = (await settings.getValueById(
-			AppSetting.RateSustained,
-		)) as number;
+		const [
+			monitoringWindowDays,
+			slidingWindowSeconds,
+			crossChannelThreshold,
+			rateShortBurst,
+			rateSustained,
+		] = (await Promise.all([
+			settings.getValueById(AppSetting.MonitoringWindowDays),
+			settings.getValueById(AppSetting.SlidingWindowSeconds),
+			settings.getValueById(AppSetting.CrossChannelThreshold),
+			settings.getValueById(AppSetting.RateShortBurst),
+			settings.getValueById(AppSetting.RateSustained),
+		])) as number[];
 
 		const config: SpamConfig = {
-            monitoringWindowMs: monitoringWindowDays * MS_PER_DAY,
-            slidingWindowMs: slidingWindowSeconds * MS_PER_SECOND,
-            crossChannelThreshold,
-            rateShortBurst,
-            rateSustained,
-        };
+			monitoringWindowMs: monitoringWindowDays * MS_PER_DAY,
+			slidingWindowMs: slidingWindowSeconds * MS_PER_SECOND,
+			crossChannelThreshold,
+			rateShortBurst,
+			rateSustained,
+		};
 
 		if (this.processor) {
-            this.processor.updateConfig(config);
-        } else {
-            this.processor = new SpamProcessor(this.cache, config);
-        }
+			this.processor.updateConfig(config);
+		} else {
+			this.processor = new SpamProcessor(this.cache, config);
+		}
 	}
 
 	public async executePostMessageSent(
