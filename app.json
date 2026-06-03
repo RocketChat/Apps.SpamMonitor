@@ -12,5 +12,7 @@
     "nameSlug": "appsspammonitor",
     "classFile": "AppsSpamMonitorApp.ts",
     "description": "Automatically detects and flags spam from new users before it reaches Rocket.Chats community",
-    "implements": []
+    "implements": [
+        "IPostMessageSent"
+    ]
 }
