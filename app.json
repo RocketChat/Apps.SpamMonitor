@@ -8,9 +8,15 @@
         "homepage": "https://github.com/RocketChat/Apps.SpamMonitor",
         "support": "https://github.com/RocketChat/Apps.SpamMonitor/issues"
     },
+    "defaultLanguage": "en",
+    "i18n": [
+        "en.json"
+    ],
     "name": "Apps.SpamMonitor",
     "nameSlug": "appsspammonitor",
     "classFile": "AppsSpamMonitorApp.ts",
     "description": "Automatically detects and flags spam from new users before it reaches Rocket.Chats community",
-    "implements": []
+    "implements": [
+        "IPostMessageSent"
+    ]
 }
