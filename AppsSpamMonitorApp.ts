@@ -13,6 +13,7 @@ import { App } from '@rocket.chat/apps-engine/definition/App';
 import {
 	IMessage,
 	IPostMessageSent,
+	IPreMessageSentPrevent,
 } from '@rocket.chat/apps-engine/definition/messages';
 import { IAppInfo } from '@rocket.chat/apps-engine/definition/metadata';
 import { ISetting } from '@rocket.chat/apps-engine/definition/settings';
@@ -22,10 +23,16 @@ import { SpamMonitorCommand } from './src/commands/commandUtilities';
 import { APP_SETTINGS } from './src/config/settings';
 import { AppSetting } from './src/enums/settings';
 import { SpamConfig } from './src/definition/spamProcessor';
+import { RestrictionManager } from './src/core/restrictionsManager';
+import { UserStatusStore } from './src/persistence/userStatusStore';
+import { RoomType } from '@rocket.chat/apps-engine/definition/rooms';
 
 const MS_PER_DAY = 86_400_000;
 const MS_PER_SECOND = 1000;
-export class AppsSpamMonitorApp extends App implements IPostMessageSent {
+export class AppsSpamMonitorApp
+	extends App
+	implements IPreMessageSentPrevent, IPostMessageSent
+{
 	private processor: SpamProcessor | null = null;
 	private cache: MessageCache;
 
@@ -104,12 +111,48 @@ export class AppsSpamMonitorApp extends App implements IPostMessageSent {
 		}
 	}
 
+	public async checkPreMessageSentPrevent(
+		message: IMessage,
+		_read: IRead,
+		_http: IHttp,
+	): Promise<boolean> {
+		if (!message.text || message.room.type === RoomType.DIRECT_MESSAGE) {
+			return false;
+		}
+		return true;
+	}
+
+	public async executePreMessageSentPrevent(
+		message: IMessage,
+		read: IRead,
+		_http: IHttp,
+		persistence: IPersistence,
+	): Promise<boolean> {
+		const { restricted } = await UserStatusStore.isRestricted(
+			read,
+			persistence,
+			message.sender.id,
+		);
+		return restricted;
+	}
+
+	public async checkPostMessageSent(
+		message: IMessage,
+		_read: IRead,
+		_http: IHttp,
+	): Promise<boolean> {
+		if (!message.text || message.room.type === RoomType.DIRECT_MESSAGE) {
+			return false;
+		}
+		return true;
+	}
+
 	public async executePostMessageSent(
 		message: IMessage,
 		read: IRead,
 		_http: IHttp,
 		persistence: IPersistence,
-		_modify: IModify,
+		modify: IModify,
 	): Promise<void> {
 		if (!message.sender || !message.room) {
 			return;
@@ -121,7 +164,21 @@ export class AppsSpamMonitorApp extends App implements IPostMessageSent {
 		}
 
 		try {
-			await this.processor.analyzeMessage(message, read, persistence);
+			const result = await this.processor.analyzeMessage(
+				message,
+				read,
+				persistence,
+			);
+
+			if (result?.flagged && result.record && result.levelChanged) {
+				await RestrictionManager.applyAction(
+					read,
+					modify,
+					sender,
+					result.record,
+					{ levelChanged: result.levelChanged },
+				);
+			}
 		} catch (err) {
 			this.getLogger().error('[antispam] Error in analyzeMessage:', err);
 		}

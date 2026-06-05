@@ -134,4 +134,31 @@ export class UserStatusStore {
 			typeof r.flagsAtLevel === 'number'
 		);
 	}
+
+	public static async isRestricted(
+		read: IRead,
+		persistence: IPersistence,
+		userId: string,
+	): Promise<{ restricted: boolean; record: UserSpamRecord | null }> {
+		const record = await UserStatusStore.get(read, userId);
+		if (!record) {
+			return { restricted: false, record: null };
+		}
+
+		if (record.spammingLevel === SpammingLevel.AdminReview) {
+			return { restricted: true, record };
+		}
+
+		if (record.cooldownUntil > 0 && Date.now() < record.cooldownUntil) {
+			return { restricted: true, record };
+		}
+
+		if (record.cooldownUntil > 0 && Date.now() >= record.cooldownUntil) {
+			const lifted: UserSpamRecord = { ...record, cooldownUntil: 0 };
+			await UserStatusStore.save(persistence, userId, lifted);
+			return { restricted: false, record: lifted };
+		}
+
+		return { restricted: false, record };
+	}
 }
