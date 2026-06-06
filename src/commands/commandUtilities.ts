@@ -14,8 +14,10 @@ import { SpamMonitorParam } from '../enums/commandUtilities';
 export class SpamMonitorCommand implements ISlashCommand {
 	public command = 'spammonitor';
 	public i18nDescription = 'SpamMonitor_Command_Description';
-	public i18nParamsExample = 'list';
+	public i18nParamsExample = 'dashboard';
 	public providesPreview = false;
+
+	constructor(private readonly appId: string) {}
 
 	public async executor(
 		context: SlashCommandContext,
@@ -43,8 +45,8 @@ export class SpamMonitorCommand implements ISlashCommand {
 		const [subcommand] = context.getArguments();
 
 		switch (subcommand?.toLowerCase()) {
-			case SpamMonitorParam.LIST:
-				await handler.listFlaggedUsers();
+			case SpamMonitorParam.DASHBOARD:
+				await handler.openDashboard(context, this.appId);
 				break;
 			default:
 				await handler.sendHelp();

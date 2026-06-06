@@ -5,5 +5,5 @@ export const slashNotifications = {
 export const slashCommandHelp = {
 	HELP:
 		'*SpamMonitor commands*\n' +
-		'`/spammonitor list` — list all flagged users and their current spam level',
+		'`/spammonitor dashboard` — open the spam monitor dashboard',
 };

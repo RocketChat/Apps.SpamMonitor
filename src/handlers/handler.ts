@@ -6,9 +6,9 @@ import {
 } from '@rocket.chat/apps-engine/definition/accessors';
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
 import { IRoom } from '@rocket.chat/apps-engine/definition/rooms';
-import { SPAMMING_LEVEL_LABELS } from '../definition/spamlevel';
-import { UserStatusStore } from '../persistence/userStatusStore';
 import { slashCommandHelp, slashNotifications } from '../enums/notifications';
+import { SlashCommandContext } from '@rocket.chat/apps-engine/definition/slashcommands';
+import { buildDashboardModal } from '../modal/dashboardModal';
 
 export class SpamMonitorHandler {
 	constructor(
@@ -35,34 +35,19 @@ export class SpamMonitorHandler {
 		await msg;
 	}
 
-	public async listFlaggedUsers(): Promise<void> {
-		const records = await UserStatusStore.getAll(this.read);
-
-		if (!records.length) {
-			await this.notify(slashNotifications.NO_FLAGGED_USERS);
+	public async openDashboard(
+		context: SlashCommandContext,
+		appId: string,
+	): Promise<void> {
+		const triggerId = context.getTriggerId();
+		if (!triggerId) {
+			await this.notify('Could not open dashboard. Try again.');
 			return;
 		}
-
-		records.sort((a, b) => {
-			if (b.spammingLevel !== a.spammingLevel) {
-				return b.spammingLevel - a.spammingLevel;
-			}
-			return a.username.localeCompare(b.username);
-		});
-
-		const lines = records.map((r) => {
-			const label =
-				SPAMMING_LEVEL_LABELS[r.spammingLevel] ??
-				String(r.spammingLevel);
-			const cooldownStr =
-				r.cooldownUntil > 0 && Date.now() < r.cooldownUntil
-					? ` | cooldown until ${new Date(r.cooldownUntil).toISOString().slice(0, 16).replace('T', ' ')}`
-					: '';
-			return `@${r.username} — **${label}** (${r.totalFlags} flag${r.totalFlags === 1 ? '' : 's'})${cooldownStr}`;
-		});
-
-		const header = `*Flagged Users (${records.length})*\n`;
-		await this.notify(header + lines.join('\n'));
+		const modal = await buildDashboardModal(this.read, appId);
+		await this.modify
+			.getUiController()
+			.openSurfaceView(modal, { triggerId }, this.sender);
 	}
 
 	public async sendHelp(): Promise<void> {

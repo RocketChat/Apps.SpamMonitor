@@ -1,3 +1,3 @@
 export enum SpamMonitorParam {
-	LIST = 'list',
+	DASHBOARD = 'dashboard',
 }
