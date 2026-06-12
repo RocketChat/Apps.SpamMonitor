@@ -116,10 +116,10 @@ export class AppsSpamMonitorApp
 		_read: IRead,
 		_http: IHttp,
 	): Promise<boolean> {
-		if (!message.text || message.room.type === RoomType.DIRECT_MESSAGE) {
+		if (!message.sender || !message.room || !message.text) {
 			return false;
 		}
-		return true;
+		return message.room.type !== RoomType.DIRECT_MESSAGE;
 	}
 
 	public async executePreMessageSentPrevent(
@@ -128,12 +128,20 @@ export class AppsSpamMonitorApp
 		_http: IHttp,
 		persistence: IPersistence,
 	): Promise<boolean> {
-		const { restricted } = await UserStatusStore.isRestricted(
-			read,
-			persistence,
-			message.sender.id,
-		);
-		return restricted;
+		if (!message.sender || !message.room) {
+			return false;
+		}
+		try {
+			const { restricted } = await UserStatusStore.isRestricted(
+				read,
+				persistence,
+				message.sender.id,
+			);
+			return restricted;
+		} catch (err) {
+			this.getLogger().error('[antispam] Error in isRestricted:', err);
+			return false;
+		}
 	}
 
 	public async checkPostMessageSent(
