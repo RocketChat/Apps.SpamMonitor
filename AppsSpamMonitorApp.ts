@@ -1,5 +1,7 @@
 import {
 	IAppAccessors,
+	IAppInstallationContext,
+	IAppUninstallationContext,
 	IConfigurationExtend,
 	IConfigurationModify,
 	IEnvironmentRead,
@@ -26,9 +28,14 @@ import { SpamConfig } from './src/definition/spamProcessor';
 import { RestrictionManager } from './src/core/restrictionsManager';
 import { UserStatusStore } from './src/persistence/userStatusStore';
 import { RoomType } from '@rocket.chat/apps-engine/definition/rooms';
+import { AdminChannelMessages } from './src/lib/translations/locals/en';
+import {
+	ADMIN_CHANNEL_DISPLAY_NAME,
+	ADMIN_CHANNEL_NAME,
+	MS_PER_DAY,
+	MS_PER_SECOND,
+} from './src/constants/config';
 
-const MS_PER_DAY = 86_400_000;
-const MS_PER_SECOND = 1000;
 export class AppsSpamMonitorApp
 	extends App
 	implements IPreMessageSentPrevent, IPostMessageSent
@@ -68,6 +75,96 @@ export class AppsSpamMonitorApp
 	): Promise<boolean> {
 		await this.loadSettings(environment);
 		return true;
+	}
+
+	public async onInstall(
+		context: IAppInstallationContext,
+		read: IRead,
+		_http: IHttp,
+		_persistence: IPersistence,
+		modify: IModify,
+	): Promise<void> {
+		const installer = context.user;
+		const appUser = await read.getUserReader().getAppUser();
+		if (!appUser) {
+			return;
+		}
+
+		let room = await read.getRoomReader().getByName(ADMIN_CHANNEL_NAME);
+		if (!room) {
+			const roomBuilder = modify
+				.getCreator()
+				.startRoom()
+				.setDisplayName(ADMIN_CHANNEL_DISPLAY_NAME)
+				.setSlugifiedName(ADMIN_CHANNEL_NAME)
+				.setType(RoomType.PRIVATE_GROUP)
+				.setCreator(appUser)
+				.setMembersToBeAddedByUsernames([installer.username]);
+
+			const roomId = await modify.getCreator().finish(roomBuilder);
+			room = await read.getRoomReader().getById(roomId);
+		}
+
+		if (room) {
+			const msgBuilder = modify
+				.getCreator()
+				.startMessage()
+				.setRoom(room)
+				.setSender(appUser)
+				.setText(AdminChannelMessages.welcome());
+
+			await modify.getCreator().finish(msgBuilder);
+		}
+
+		await RestrictionManager.dmUser(
+			read,
+			modify,
+			installer,
+			AdminChannelMessages.installDm(ADMIN_CHANNEL_NAME),
+		);
+	}
+
+	public async onUninstall(
+		context: IAppUninstallationContext,
+		read: IRead,
+		_http: IHttp,
+		_persistence: IPersistence,
+		modify: IModify,
+	): Promise<void> {
+		try {
+			const room = await read
+				.getRoomReader()
+				.getByName(ADMIN_CHANNEL_NAME);
+			if (room) {
+				try {
+					await modify.getDeleter().deleteRoom(room.id);
+				} catch (roomErr) {
+					this.getLogger().warn(
+						'[SpamMonitor] onUninstall: deleteRoom error:',
+						roomErr,
+					);
+				}
+			}
+
+			try {
+				await RestrictionManager.dmUser(
+					read,
+					modify,
+					context.user,
+					AdminChannelMessages.uninstallDm(ADMIN_CHANNEL_NAME),
+				);
+			} catch (dmErr) {
+				this.getLogger().warn(
+					'[SpamMonitor] onUninstall: DM error:',
+					dmErr,
+				);
+			}
+		} catch (err) {
+			this.getLogger().error(
+				'[SpamMonitor] onUninstall: unexpected error:',
+				err,
+			);
+		}
 	}
 
 	public async onSettingUpdated(

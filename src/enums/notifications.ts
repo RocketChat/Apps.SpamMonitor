@@ -1,6 +1,7 @@
 export const slashNotifications = {
 	NO_FLAGGED_USERS: 'No flagged users at this time.',
 	NO_PERMISSION: 'You do not have permission to use this command.',
+	ADMIN_CHANNEL_ONLY: 'This command can only be used in the admin channel.',
 };
 export const slashCommandHelp = {
 	HELP:

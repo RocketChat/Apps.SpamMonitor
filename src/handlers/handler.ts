@@ -8,7 +8,7 @@ import { IUser } from '@rocket.chat/apps-engine/definition/users';
 import { IRoom } from '@rocket.chat/apps-engine/definition/rooms';
 import { SPAMMING_LEVEL_LABELS } from '../definition/spamlevel';
 import { UserStatusStore } from '../persistence/userStatusStore';
-import { slashCommandHelp, slashNotifications } from '../enums/notifications';
+import { slashNotifications } from '../enums/notifications';
 
 export class SpamMonitorHandler {
 	constructor(
@@ -65,11 +65,7 @@ export class SpamMonitorHandler {
 		await this.notify(header + lines.join('\n'));
 	}
 
-	public async sendHelp(): Promise<void> {
-		await this.notify(slashCommandHelp.HELP);
-	}
-
-	public async sendNoPermission(): Promise<void> {
-		await this.notify(slashNotifications.NO_PERMISSION);
+	public async sendNotification(text: string): Promise<void> {
+		await this.notify(text);
 	}
 }

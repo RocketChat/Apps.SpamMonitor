@@ -13,3 +13,32 @@ export const Messages: Record<SpammingLevel, NotifyFn | null> = {
 	[SpammingLevel.AdminReview]: (username) =>
 		`@${username}, your account has been flagged for admin review.\n\nYou are currently restricted from sending messages until an administrator reviews your account and lifts the restriction.\n\nPlease reach out to an admin directly if you need immediate assistance.`,
 };
+
+export const AdminChannelMessages = {
+	welcome: () =>
+		`**SpamMonitor Admin Panel**\n\n` +
+		`This is the dedicated admin channel for the SpamMonitor app. ` +
+		`All slash commands must be run from this channel.\n\n` +
+		`---\n\n` +
+		`**Spam Levels**\n` +
+		`• \`Clean\` — No issues detected\n` +
+		`• \`Monitored\` — Unusual activity flagged; user is being watched\n` +
+		`• \`Restricted\` — User placed on a timed cooldown\n` +
+		`• \`Suspended\` — User suspended for a longer period\n` +
+		`• \`AdminReview\` — Fully blocked; awaiting manual admin action\n\n` +
+		`---\n\n` +
+		`**Available Commands** (\`/spammonitor <subcommand>\`)\n` +
+		`• \`list\` — View all currently flagged users\n` +
+		`• \`help\` — Show this help message\n\n` +
+		`_Configure thresholds and windows in Marketplace → Private Apps → Apps.SpamMonitor._`,
+
+	installDm: (channelName: string) =>
+		`**SpamMonitor installed!**\n\n` +
+		`An admin panel channel \`#${channelName}\` has been created.\n` +
+		`All slash commands are scoped to that channel only.\n` +
+		`Configure settings in *Marketplace → Private Apps → Apps.SpamMonitor*.`,
+
+	uninstallDm: (channelName: string) =>
+		`**SpamMonitor uninstalled.**\n\n` +
+		`The \`#${channelName}\` channel has been removed.`,
+};

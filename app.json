@@ -19,5 +19,19 @@
     "implements": [
         "IPreMessageSentPrevent",
         "IPostMessageSent"
+    ],
+    "permissions": [
+        {
+            "name": "room.read"
+        },
+        {
+            "name": "room.write"
+        },
+        {
+            "name": "slashcommand"
+        },
+        {
+            "name": "message.write"
+        }
     ]
 }
