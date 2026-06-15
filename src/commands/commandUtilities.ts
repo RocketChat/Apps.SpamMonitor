@@ -14,7 +14,7 @@ import { SpamMonitorParam } from '../enums/commandUtilities';
 export class SpamMonitorCommand implements ISlashCommand {
 	public command = 'spammonitor';
 	public i18nDescription = 'SpamMonitor_Command_Description';
-	public i18nParamsExample = 'list';
+	public i18nParamsExample = 'list all | list timeout | list <Level>';
 	public providesPreview = false;
 
 	public async executor(
@@ -26,7 +26,6 @@ export class SpamMonitorCommand implements ISlashCommand {
 	): Promise<void> {
 		const sender = context.getSender();
 		const room = context.getRoom();
-
 		const handler = new SpamMonitorHandler(
 			sender,
 			room,
@@ -35,19 +34,32 @@ export class SpamMonitorCommand implements ISlashCommand {
 			http,
 			persistence,
 		);
-		const roles = sender.roles || [];
-		if (!roles.includes('admin')) {
+
+		if (!sender.roles?.includes('admin')) {
 			await handler.sendNoPermission();
 			return;
 		}
-		const [subcommand] = context.getArguments();
 
-		switch (subcommand?.toLowerCase()) {
-			case SpamMonitorParam.LIST:
-				await handler.listFlaggedUsers();
+		const [subcommand, ...rest] = context.getArguments();
+		if (subcommand?.toLowerCase() !== SpamMonitorParam.LIST) {
+			await handler.sendHelp();
+			return;
+		}
+
+		const filter = rest.join(' ').toLowerCase().trim();
+		switch (filter) {
+			case SpamMonitorParam.ALL:
+			case '':
+				await handler.listAll();
+				break;
+			case SpamMonitorParam.TIMEOUT:
+				await handler.listTimeout();
+				break;
+			case SpamMonitorParam.ADMIN_REVIEW:
+				await handler.listAdminReview();
 				break;
 			default:
-				await handler.sendHelp();
+				await handler.listByLevel(filter);
 				break;
 		}
 	}
