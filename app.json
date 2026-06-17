@@ -28,10 +28,31 @@
             "name": "room.write"
         },
         {
-            "name": "slashcommand"
+            "name": "message.read"
         },
         {
             "name": "message.write"
+        },
+        {
+            "name": "user.read"
+        },
+        {
+            "name": "user.write"
+        },
+        {
+            "name": "persistence"
+        },
+        {
+            "name": "env.read"
+        },
+        {
+            "name": "networking"
+        },
+        {
+            "name": "slashcommand"
+        },
+        {
+            "name": "ui.interact"
         }
     ]
 }
