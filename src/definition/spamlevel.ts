@@ -31,9 +31,9 @@ export const NEXT_LEVEL: Partial<Record<SpammingLevel, SpammingLevel>> = {
 
 export const COOLDOWN_DURATIONS: Record<SpammingLevel, number> = {
 	[SpammingLevel.Clean]: 0,
-	[SpammingLevel.Monitored]: 5 * 60 * 1000,
-	[SpammingLevel.Restricted]: 30 * 60 * 1000,
-	[SpammingLevel.Suspended]: 24 * 60 * 60 * 1000,
+	[SpammingLevel.Monitored]: 0,
+	[SpammingLevel.Restricted]: 2 * 60 * 1000,
+	[SpammingLevel.Suspended]: 12 * 60 * 1000,
 	[SpammingLevel.AdminReview]: 0,
 };
 
