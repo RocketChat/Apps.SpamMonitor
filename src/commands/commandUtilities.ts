@@ -12,12 +12,16 @@ import { SpamMonitorHandler } from '../handlers/handler';
 import { SpamMonitorParam } from '../enums/commandUtilities';
 import { slashCommandHelp, slashNotifications } from '../enums/notifications';
 import { ADMIN_CHANNEL_NAME } from '../constants/config';
+import { RoomInteractionStorage } from '../persistence/roomInteraction';
 
 export class SpamMonitorCommand implements ISlashCommand {
 	public command = 'spammonitor';
 	public i18nDescription = 'SpamMonitor_Command_Description';
-	public i18nParamsExample = 'list all | list timeout | list <Level>';
+	public i18nParamsExample =
+		'list all | list timeout | list <Level> | manage <username>';
 	public providesPreview = false;
+
+	constructor(private readonly appId: string) {}
 
 	public async executor(
 		context: SlashCommandContext,
@@ -28,6 +32,15 @@ export class SpamMonitorCommand implements ISlashCommand {
 	): Promise<void> {
 		const sender = context.getSender();
 		const room = context.getRoom();
+		const triggerId = context.getTriggerId();
+
+		const roomInteractionStorage = new RoomInteractionStorage(
+			persistence,
+			read.getPersistenceReader(),
+			sender.id,
+		);
+		roomInteractionStorage.storeInteractionRoomId(room.id);
+
 		const handler = new SpamMonitorHandler(
 			sender,
 			room,
@@ -35,6 +48,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 			modify,
 			http,
 			persistence,
+			this.appId,
 		);
 
 		if (room.slugifiedName !== ADMIN_CHANNEL_NAME) {
@@ -56,21 +70,38 @@ export class SpamMonitorCommand implements ISlashCommand {
 			return;
 		}
 
-		const filter = rest.join(' ').toLowerCase().trim();
-		switch (filter) {
-			case SpamMonitorParam.ALL:
-			case '':
-				await handler.listAll();
+		switch (subcommand?.toLowerCase()) {
+			case SpamMonitorParam.LIST: {
+				const filter = rest.join(' ').toLowerCase().trim();
+				switch (filter) {
+					case SpamMonitorParam.ALL:
+					case '':
+						await handler.listAll();
+						break;
+					case SpamMonitorParam.TIMEOUT:
+						await handler.listTimeout();
+						break;
+					case SpamMonitorParam.ADMIN_REVIEW:
+						await handler.listAdminReview();
+						break;
+					default:
+						await handler.listByLevel(filter);
+						break;
+				}
 				break;
-			case SpamMonitorParam.TIMEOUT:
-				await handler.listTimeout();
+			}
+			case SpamMonitorParam.MANAGE: {
+				const username = rest[0]?.replace(/^@/, '').trim();
+				if (!triggerId) {
+					await handler.sendNotification(slashNotifications.MANAGE_MISSING_USERNAME);
+					return;
+				}
+				await handler.manageUser(username, triggerId);
 				break;
-			case SpamMonitorParam.ADMIN_REVIEW:
-				await handler.listAdminReview();
-				break;
+			}
 			default:
-				await handler.listByLevel(filter);
-				break;
+				await handler.sendNotification(slashCommandHelp.HELP);
+			break;
 		}
 	}
 }

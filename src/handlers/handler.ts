@@ -12,7 +12,9 @@ import {
 	UserSpamRecord,
 } from '../definition/spamlevel';
 import { UserStatusStore } from '../persistence/userStatusStore';
-import { slashCommandHelp, slashNotifications } from '../enums/notifications';
+import { slashNotifications } from '../enums/notifications';
+import { buildManageUserModal } from '../modals/manageUsers';
+
 export class SpamMonitorHandler {
 	constructor(
 		private readonly sender: IUser,
@@ -21,6 +23,7 @@ export class SpamMonitorHandler {
 		private readonly modify: IModify,
 		private readonly http: IHttp,
 		private readonly persis: IPersistence,
+		private readonly appId: string,
 	) {}
 
 	private async notify(text: string): Promise<void> {
@@ -85,11 +88,11 @@ export class SpamMonitorHandler {
 			await this.notify(emptyMsg);
 			return;
 		}
-
 		const summary = this.buildSummary(allRecords);
 		const rows = records.map((r) => this.formatRow(r)).join('\n');
 		await this.notify(`${summary}\n\n*${title}*\n${rows}`);
 	}
+
 	private async listByLevelEnum(
 		level: SpammingLevel,
 		title: string,
@@ -105,6 +108,7 @@ export class SpamMonitorHandler {
 			slashNotifications.NO_FLAGGED_USERS_FILTER(title),
 		);
 	}
+
 	public async listAll(): Promise<void> {
 		const records = await UserStatusStore.getAll(this.read);
 		const sorted = [...records].sort((a, b) =>
@@ -154,7 +158,6 @@ export class SpamMonitorHandler {
 		const filtered = records
 			.filter((r) => r.cooldownUntil > 0 && now < r.cooldownUntil)
 			.sort((a, b) => a.cooldownUntil - b.cooldownUntil);
-
 		await this.renderList(
 			filtered,
 			'Users in Active Timeout',
@@ -165,5 +168,35 @@ export class SpamMonitorHandler {
 
 	public async sendNotification(text: string): Promise<void> {
 		await this.notify(text);
+	}
+	public async manageUser(
+		username: string,
+		triggerId: string,
+	): Promise<void> {
+		if (!username) {
+			await this.notify(slashNotifications.MANAGE_MISSING_USERNAME);
+			return;
+		}
+
+		const targetUser = await this.read
+			.getUserReader()
+			.getByUsername(username);
+
+		if (!targetUser) {
+			await this.notify(slashNotifications.USER_NOT_FOUND(username));
+			return;
+		}
+
+		const record = await UserStatusStore.get(this.read, targetUser.id);
+
+		if (!record) {
+			await this.notify(slashNotifications.USER_NOT_FOUND(username));
+			return;
+		}
+
+		const modal = buildManageUserModal(record, this.appId);
+		await this.modify
+			.getUiController()
+			.openSurfaceView(modal, { triggerId }, this.sender);
 	}
 }
