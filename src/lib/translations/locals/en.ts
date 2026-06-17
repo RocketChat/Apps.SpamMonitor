@@ -1,4 +1,6 @@
+import { ConfirmMeta } from '../../../definition/confirmationModal';
 import { SpammingLevel } from '../../../definition/spamlevel';
+import { ManageUserActionId } from '../../../enums/modals/manageUsers';
 
 export type NotifyFn = (username: string, duration: string) => string;
 
@@ -41,4 +43,49 @@ export const AdminChannelMessages = {
 	uninstallDm: (channelName: string) =>
 		`**SpamMonitor uninstalled.**\n\n` +
 		`The \`#${channelName}\` channel has been removed.`,
+};
+
+export const AdminActionMessages = {
+	vouch: (targetUsername: string, adminUsername: string) =>
+		`@${targetUsername} vouched successfully by @${adminUsername} — now fully exempt from spam monitoring.`,
+	resetCooldown: (targetUsername: string, adminUsername: string) =>
+		`Cooldown for @${targetUsername} reset successfully by @${adminUsername}.`,
+	resetLevelDown: (
+		targetUsername: string,
+		adminUsername: string,
+		beforeLabel: string,
+		afterLabel: string,
+	) =>
+		`Spam level for @${targetUsername} reduced from *${beforeLabel}* → *${afterLabel}* successfully by @${adminUsername}.`,
+	resetLevelClean: (targetUsername: string, adminUsername: string) =>
+		`@${targetUsername} reset to *Clean* successfully by @${adminUsername}.`,
+};
+
+export const ConfirmActionMeta: Partial<
+	Record<ManageUserActionId, ConfirmMeta>
+> = {
+	[ManageUserActionId.VOUCH]: {
+		title: 'Vouch for User',
+		description:
+			'This will mark the user as *trusted* and fully exempt them from spam monitoring.',
+		confirmLabel: 'Confirm Vouch',
+	},
+	[ManageUserActionId.RESET_COOLDOWN]: {
+		title: 'Reset Cooldown',
+		description:
+			'This will immediately lift the active cooldown/timeout for this user.',
+		confirmLabel: 'Reset Cooldown',
+	},
+	[ManageUserActionId.RESET_LEVEL_DOWN]: {
+		title: 'Level Down',
+		description: 'This will reduce the spam level by one step.',
+		confirmLabel: 'Level Down',
+	},
+	[ManageUserActionId.RESET_LEVEL_CLEAN]: {
+		title: 'Reset to Clean',
+		description:
+			'This will immediately reset the spam level to *Clean*, removing all restrictions.',
+		confirmLabel: 'Reset to Clean',
+		danger: true,
+	},
 };
