@@ -52,7 +52,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 
 		const [subcommand, ...rest] = context.getArguments();
 		if (subcommand?.toLowerCase() !== SpamMonitorParam.LIST) {
-			await handler.sendHelp();
+			await handler.sendNotification(slashCommandHelp.HELP);
 			return;
 		}
 
@@ -69,7 +69,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 				await handler.listAdminReview();
 				break;
 			default:
-				await handler.sendNotification(slashCommandHelp.HELP);
+				await handler.listByLevel(filter);
 				break;
 		}
 	}
