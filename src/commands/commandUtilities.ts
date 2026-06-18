@@ -10,6 +10,8 @@ import {
 } from '@rocket.chat/apps-engine/definition/slashcommands';
 import { SpamMonitorHandler } from '../handlers/handler';
 import { SpamMonitorParam } from '../enums/commandUtilities';
+import { slashCommandHelp, slashNotifications } from '../enums/notifications';
+import { ADMIN_CHANNEL_NAME } from '../constants/config';
 
 export class SpamMonitorCommand implements ISlashCommand {
 	public command = 'spammonitor';
@@ -35,14 +37,22 @@ export class SpamMonitorCommand implements ISlashCommand {
 			persistence,
 		);
 
-		if (!sender.roles?.includes('admin')) {
-			await handler.sendNoPermission();
+		if (room.slugifiedName !== ADMIN_CHANNEL_NAME) {
+			await handler.sendNotification(
+				slashNotifications.ADMIN_CHANNEL_ONLY,
+			);
+			return;
+		}
+
+		const roles = sender.roles || [];
+		if (!roles.includes('admin')) {
+			await handler.sendNotification(slashNotifications.NO_PERMISSION);
 			return;
 		}
 
 		const [subcommand, ...rest] = context.getArguments();
 		if (subcommand?.toLowerCase() !== SpamMonitorParam.LIST) {
-			await handler.sendHelp();
+			await handler.sendNotification(slashCommandHelp.HELP);
 			return;
 		}
 

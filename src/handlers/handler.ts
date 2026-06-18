@@ -163,11 +163,7 @@ export class SpamMonitorHandler {
 		);
 	}
 
-	public async sendHelp(): Promise<void> {
-		await this.notify(slashCommandHelp.HELP);
-	}
-
-	public async sendNoPermission(): Promise<void> {
-		await this.notify(slashNotifications.NO_PERMISSION);
+	public async sendNotification(text: string): Promise<void> {
+		await this.notify(text);
 	}
 }
