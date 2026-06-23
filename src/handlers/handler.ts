@@ -14,6 +14,11 @@ import {
 import { UserStatusStore } from '../persistence/userStatusStore';
 import { slashNotifications } from '../enums/notifications';
 import { buildManageUserModal } from '../modals/manageUsers';
+import {
+	LIST_OVERFLOW_BLOCK_ID,
+	ManageUserActionId,
+} from '../enums/modals/manageUsers';
+import { TextObjectType } from '@rocket.chat/ui-kit';
 
 export class SpamMonitorHandler {
 	constructor(
@@ -64,7 +69,9 @@ export class SpamMonitorHandler {
 		);
 	}
 
-	private formatRow(r: UserSpamRecord): string {
+	private buildUserRowBlock(
+		r: UserSpamRecord,
+	): import('@rocket.chat/ui-kit').Block {
 		const label =
 			SPAMMING_LEVEL_LABELS[r.spammingLevel] ?? String(r.spammingLevel);
 		const now = Date.now();
@@ -75,7 +82,30 @@ export class SpamMonitorHandler {
 						.slice(0, 16)
 						.replace('T', ' ')} UTC`
 				: '';
-		return `@${r.username} — *${label}* ${cooldownStr}`;
+
+		return {
+			type: 'section' as const,
+			text: {
+				type: TextObjectType.MRKDWN,
+				text: `@${r.username} — *${label}*${cooldownStr}`,
+			},
+			accessory: {
+				type: 'overflow' as const,
+				appId: this.appId,
+				blockId: LIST_OVERFLOW_BLOCK_ID,
+				actionId: ManageUserActionId.OPEN_MANAGE_MODAL,
+				options: [
+					{
+						value: `${ManageUserActionId.OPEN_MANAGE_MODAL}::${r.userId}`,
+						text: {
+							type: TextObjectType.PLAIN_TEXT,
+							text: 'Manage user',
+							emoji: true,
+						},
+					},
+				],
+			},
+		};
 	}
 
 	private async renderList(
@@ -88,9 +118,29 @@ export class SpamMonitorHandler {
 			await this.notify(emptyMsg);
 			return;
 		}
+
 		const summary = this.buildSummary(allRecords);
-		const rows = records.map((r) => this.formatRow(r)).join('\n');
-		await this.notify(`${summary}\n\n*${title}*\n${rows}`);
+
+		const headerBlock = {
+			type: 'section' as const,
+			text: {
+				type: TextObjectType.MRKDWN,
+				text: `${summary}\n\n*${title}*`,
+			},
+		};
+
+		const userBlocks = records.map((r) => this.buildUserRowBlock(r));
+		const allBlocks = [headerBlock, ...userBlocks];
+
+		const msg = this.modify
+			.getCreator()
+			.startMessage()
+			.setRoom(this.room)
+			.setBlocks(allBlocks as any);
+
+		await this.modify
+			.getNotifier()
+			.notifyUser(this.sender, msg.getMessage());
 	}
 
 	private async listByLevelEnum(

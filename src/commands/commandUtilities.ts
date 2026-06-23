@@ -65,10 +65,6 @@ export class SpamMonitorCommand implements ISlashCommand {
 		}
 
 		const [subcommand, ...rest] = context.getArguments();
-		if (subcommand?.toLowerCase() !== SpamMonitorParam.LIST) {
-			await handler.sendNotification(slashCommandHelp.HELP);
-			return;
-		}
 
 		switch (subcommand?.toLowerCase()) {
 			case SpamMonitorParam.LIST: {
@@ -93,7 +89,9 @@ export class SpamMonitorCommand implements ISlashCommand {
 			case SpamMonitorParam.MANAGE: {
 				const username = rest[0]?.replace(/^@/, '').trim();
 				if (!triggerId) {
-					await handler.sendNotification(slashNotifications.MANAGE_MISSING_USERNAME);
+					await handler.sendNotification(
+						slashNotifications.MANAGE_MISSING_USERNAME,
+					);
 					return;
 				}
 				await handler.manageUser(username, triggerId);
@@ -101,7 +99,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 			}
 			default:
 				await handler.sendNotification(slashCommandHelp.HELP);
-			break;
+				break;
 		}
 	}
 }
