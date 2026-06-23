@@ -3,4 +3,5 @@ export enum SpamMonitorParam {
 	ALL = 'all',
 	TIMEOUT = 'timeout',
 	ADMIN_REVIEW = 'review',
+	MANAGE = 'manage',
 }

@@ -29,6 +29,13 @@ export const NEXT_LEVEL: Partial<Record<SpammingLevel, SpammingLevel>> = {
 	[SpammingLevel.Suspended]: SpammingLevel.AdminReview,
 };
 
+export const PREV_LEVEL: Partial<Record<SpammingLevel, SpammingLevel>> = {
+	[SpammingLevel.Monitored]: SpammingLevel.Clean,
+	[SpammingLevel.Restricted]: SpammingLevel.Monitored,
+	[SpammingLevel.Suspended]: SpammingLevel.Restricted,
+	[SpammingLevel.AdminReview]: SpammingLevel.Suspended,
+};
+
 export const COOLDOWN_DURATIONS: Record<SpammingLevel, number> = {
 	[SpammingLevel.Clean]: 0,
 	[SpammingLevel.Monitored]: 0,
@@ -45,5 +52,6 @@ export interface UserSpamRecord {
 	lastEscalation: number;
 	totalFlags: number;
 	flagsAtLevel: number;
+	vouched?: boolean;
 	vouchedBy?: string;
 }
