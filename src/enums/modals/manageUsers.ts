@@ -7,9 +7,11 @@ export enum ManageUserActionId {
 	CONFIRM_RESET_COOLDOWN = 'confirm_reset_cooldown',
 	CONFIRM_RESET_LEVEL_DOWN = 'confirm_reset_level_down',
 	CONFIRM_RESET_LEVEL_CLEAN = 'confirm_reset_level_clean',
+	OPEN_MANAGE_MODAL = 'list_open_manage_modal',
 }
 
 export const MANAGE_USER_MODAL_ID = 'manage_user_modal';
+export const LIST_OVERFLOW_BLOCK_ID = 'spam_list_overflow';
 export const CONFIRM_ACTION_MODAL_ID = 'confirm_action_modal';
 
 // overflow-menu action ids that should open a confirmation modal.
