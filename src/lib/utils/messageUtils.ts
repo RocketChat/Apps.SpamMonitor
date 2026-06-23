@@ -22,3 +22,16 @@ export function buildMessage(record: UserSpamRecord): string | null {
 	const duration = formatDuration(COOLDOWN_DURATIONS[record.spammingLevel]);
 	return fn(record.username, duration);
 }
+export function formatCooldown(cooldownUntil: number): string {
+	const now = Date.now();
+	if (!cooldownUntil || now >= cooldownUntil) return 'None';
+	const remainingMs = cooldownUntil - now;
+	const minutes = Math.floor(remainingMs / 60000);
+	const seconds = Math.floor((remainingMs % 60000) / 1000);
+	return `${minutes}m ${seconds}s remaining`;
+}
+
+export function formatDate(ts: number): string {
+	if (!ts) return 'Never';
+	return new Date(ts).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+}

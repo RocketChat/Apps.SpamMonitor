@@ -10,6 +10,7 @@ import {
 	COOLDOWN_DURATIONS,
 	ESCALATION_THRESHOLDS,
 	NEXT_LEVEL,
+	PREV_LEVEL,
 	SpammingLevel,
 	UserSpamRecord,
 } from '../definition/spamlevel';
@@ -145,6 +146,8 @@ export class UserStatusStore {
 			return { restricted: false, record: null };
 		}
 
+		if (record.vouched) return { restricted: false, record };
+
 		if (record.spammingLevel === SpammingLevel.AdminReview) {
 			return { restricted: true, record };
 		}
@@ -160,5 +163,70 @@ export class UserStatusStore {
 		}
 
 		return { restricted: false, record };
+	}
+
+	public static async vouch(
+		persistence: IPersistence,
+		userId: string,
+		username: string,
+		adminUsername: string,
+	): Promise<void> {
+		const record: UserSpamRecord = {
+			userId,
+			username,
+			spammingLevel: SpammingLevel.Clean,
+			cooldownUntil: 0,
+			lastEscalation: 0,
+			totalFlags: 0,
+			flagsAtLevel: 0,
+			vouched: true,
+			vouchedBy: adminUsername,
+		};
+		await UserStatusStore.save(persistence, userId, record);
+	}
+
+	public static async resetCooldown(
+		read: IRead,
+		persistence: IPersistence,
+		userId: string,
+	): Promise<void> {
+		const existing = await UserStatusStore.get(read, userId);
+		if (!existing) return;
+		await UserStatusStore.save(persistence, userId, {
+			...existing,
+			cooldownUntil: 0,
+		});
+	}
+
+	public static async resetLevelClean(
+		read: IRead,
+		persistence: IPersistence,
+		userId: string,
+	): Promise<void> {
+		const existing = await UserStatusStore.get(read, userId);
+		if (!existing) return;
+		await UserStatusStore.save(persistence, userId, {
+			...existing,
+			spammingLevel: SpammingLevel.Clean,
+			cooldownUntil: 0,
+			flagsAtLevel: 0,
+		});
+	}
+
+	public static async resetLevelDown(
+		read: IRead,
+		persistence: IPersistence,
+		userId: string,
+	): Promise<void> {
+		const existing = await UserStatusStore.get(read, userId);
+		if (!existing) return;
+		const prevLevel =
+			PREV_LEVEL[existing.spammingLevel] ?? SpammingLevel.Clean;
+		await UserStatusStore.save(persistence, userId, {
+			...existing,
+			spammingLevel: prevLevel,
+			cooldownUntil: 0,
+			flagsAtLevel: 0,
+		});
 	}
 }
