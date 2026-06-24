@@ -19,6 +19,12 @@ import {
 } from '@rocket.chat/apps-engine/definition/messages';
 import { IAppInfo } from '@rocket.chat/apps-engine/definition/metadata';
 import { ISetting } from '@rocket.chat/apps-engine/definition/settings';
+import {
+	IUIKitResponse,
+	UIKitBlockInteractionContext,
+	UIKitViewSubmitInteractionContext,
+} from '@rocket.chat/apps-engine/definition/uikit';
+import { IUIKitInteractionHandler } from '@rocket.chat/apps-engine/definition/uikit/IUIKitActionHandler';
 import { SpamProcessor } from './src/core/spamProcessor';
 import { MessageCache } from './src/core/cache/messageCache';
 import { SpamMonitorCommand } from './src/commands/commandUtilities';
@@ -35,10 +41,15 @@ import {
 	MS_PER_DAY,
 	MS_PER_SECOND,
 } from './src/constants/config';
+import { ViewSubmitHandler } from './src/handlers/viewSubmitHandler';
+import { BlockActionHandler } from './src/handlers/blockActionHandler';
 
 export class AppsSpamMonitorApp
 	extends App
-	implements IPreMessageSentPrevent, IPostMessageSent
+	implements
+		IPreMessageSentPrevent,
+		IPostMessageSent,
+		IUIKitInteractionHandler
 {
 	private processor: SpamProcessor | null = null;
 	private cache: MessageCache;
@@ -63,9 +74,8 @@ export class AppsSpamMonitorApp
 				configuration.settings.provideSetting(setting),
 			),
 		);
-
 		await configuration.slashCommands.provideSlashCommand(
-			new SpamMonitorCommand(),
+			new SpamMonitorCommand(this.getID()),
 		);
 	}
 
@@ -178,7 +188,6 @@ export class AppsSpamMonitorApp
 
 	private async loadSettings(env: IEnvironmentRead): Promise<void> {
 		const settings = env.getSettings();
-
 		const [
 			monitoringWindowDays,
 			slidingWindowSeconds,
@@ -213,9 +222,7 @@ export class AppsSpamMonitorApp
 		_read: IRead,
 		_http: IHttp,
 	): Promise<boolean> {
-		if (!message.sender || !message.room || !message.text) {
-			return false;
-		}
+		if (!message.sender || !message.room || !message.text) return false;
 		return message.room.type !== RoomType.DIRECT_MESSAGE;
 	}
 
@@ -225,9 +232,7 @@ export class AppsSpamMonitorApp
 		_http: IHttp,
 		persistence: IPersistence,
 	): Promise<boolean> {
-		if (!message.sender || !message.room) {
-			return false;
-		}
+		if (!message.sender || !message.room) return false;
 		try {
 			const { restricted } = await UserStatusStore.isRestricted(
 				read,
@@ -246,9 +251,8 @@ export class AppsSpamMonitorApp
 		_read: IRead,
 		_http: IHttp,
 	): Promise<boolean> {
-		if (!message.text || message.room.type === RoomType.DIRECT_MESSAGE) {
+		if (!message.text || message.room.type === RoomType.DIRECT_MESSAGE)
 			return false;
-		}
 		return true;
 	}
 
@@ -259,33 +263,60 @@ export class AppsSpamMonitorApp
 		persistence: IPersistence,
 		modify: IModify,
 	): Promise<void> {
-		if (!message.sender || !message.room) {
-			return;
-		}
-
+		if (!message.sender || !message.room) return;
 		const sender = await read.getUserReader().getById(message.sender.id);
-		if (!sender || !this.processor?.isNewUser(sender)) {
-			return;
-		}
-
+		if (!sender || !this.processor?.isNewUser(sender)) return;
 		try {
 			const result = await this.processor.analyzeMessage(
 				message,
 				read,
 				persistence,
 			);
-
 			if (result?.flagged && result.record && result.levelChanged) {
 				await RestrictionManager.applyAction(
 					read,
 					modify,
 					sender,
 					result.record,
-					{ levelChanged: result.levelChanged },
+					{
+						levelChanged: result.levelChanged,
+					},
 				);
 			}
 		} catch (err) {
 			this.getLogger().error('[antispam] Error in analyzeMessage:', err);
 		}
+	}
+
+	public async executeBlockActionHandler(
+		context: UIKitBlockInteractionContext,
+		read: IRead,
+		http: IHttp,
+		persistence: IPersistence,
+		modify: IModify,
+	): Promise<IUIKitResponse> {
+		return new BlockActionHandler(
+			read,
+			http,
+			persistence,
+			modify,
+			context,
+			this.getID(),
+		).handle();
+	}
+	public async executeViewSubmitHandler(
+		context: UIKitViewSubmitInteractionContext,
+		read: IRead,
+		http: IHttp,
+		persistence: IPersistence,
+		modify: IModify,
+	): Promise<IUIKitResponse> {
+		return new ViewSubmitHandler(
+			read,
+			http,
+			persistence,
+			modify,
+			context,
+		).handle();
 	}
 }
