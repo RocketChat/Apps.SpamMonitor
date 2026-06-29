@@ -12,7 +12,14 @@ import {
 	UserSpamRecord,
 } from '../definition/spamlevel';
 import { UserStatusStore } from '../persistence/userStatusStore';
-import { slashCommandHelp, slashNotifications } from '../enums/notifications';
+import { slashNotifications } from '../enums/notifications';
+import { buildManageUserModal } from '../modals/manageUsers';
+import {
+	LIST_OVERFLOW_BLOCK_ID,
+	ManageUserActionId,
+} from '../enums/modals/manageUsers';
+import { TextObjectType } from '@rocket.chat/ui-kit';
+
 export class SpamMonitorHandler {
 	constructor(
 		private readonly sender: IUser,
@@ -21,6 +28,7 @@ export class SpamMonitorHandler {
 		private readonly modify: IModify,
 		private readonly http: IHttp,
 		private readonly persis: IPersistence,
+		private readonly appId: string,
 	) {}
 
 	private async notify(text: string): Promise<void> {
@@ -61,7 +69,9 @@ export class SpamMonitorHandler {
 		);
 	}
 
-	private formatRow(r: UserSpamRecord): string {
+	private buildUserRowBlock(
+		r: UserSpamRecord,
+	): import('@rocket.chat/ui-kit').Block {
 		const label =
 			SPAMMING_LEVEL_LABELS[r.spammingLevel] ?? String(r.spammingLevel);
 		const now = Date.now();
@@ -72,7 +82,30 @@ export class SpamMonitorHandler {
 						.slice(0, 16)
 						.replace('T', ' ')} UTC`
 				: '';
-		return `@${r.username} — *${label}* ${cooldownStr}`;
+
+		return {
+			type: 'section' as const,
+			text: {
+				type: TextObjectType.MRKDWN,
+				text: `@${r.username} — *${label}*${cooldownStr}`,
+			},
+			accessory: {
+				type: 'overflow' as const,
+				appId: this.appId,
+				blockId: LIST_OVERFLOW_BLOCK_ID,
+				actionId: ManageUserActionId.OPEN_MANAGE_MODAL,
+				options: [
+					{
+						value: `${ManageUserActionId.OPEN_MANAGE_MODAL}::${r.userId}`,
+						text: {
+							type: TextObjectType.PLAIN_TEXT,
+							text: 'Manage user',
+							emoji: true,
+						},
+					},
+				],
+			},
+		};
 	}
 
 	private async renderList(
@@ -87,9 +120,29 @@ export class SpamMonitorHandler {
 		}
 
 		const summary = this.buildSummary(allRecords);
-		const rows = records.map((r) => this.formatRow(r)).join('\n');
-		await this.notify(`${summary}\n\n*${title}*\n${rows}`);
+
+		const headerBlock = {
+			type: 'section' as const,
+			text: {
+				type: TextObjectType.MRKDWN,
+				text: `${summary}\n\n*${title}*`,
+			},
+		};
+
+		const userBlocks = records.map((r) => this.buildUserRowBlock(r));
+		const allBlocks = [headerBlock, ...userBlocks];
+
+		const msg = this.modify
+			.getCreator()
+			.startMessage()
+			.setRoom(this.room)
+			.setBlocks(allBlocks as any);
+
+		await this.modify
+			.getNotifier()
+			.notifyUser(this.sender, msg.getMessage());
 	}
+
 	private async listByLevelEnum(
 		level: SpammingLevel,
 		title: string,
@@ -105,6 +158,7 @@ export class SpamMonitorHandler {
 			slashNotifications.NO_FLAGGED_USERS_FILTER(title),
 		);
 	}
+
 	public async listAll(): Promise<void> {
 		const records = await UserStatusStore.getAll(this.read);
 		const sorted = [...records].sort((a, b) =>
@@ -154,7 +208,6 @@ export class SpamMonitorHandler {
 		const filtered = records
 			.filter((r) => r.cooldownUntil > 0 && now < r.cooldownUntil)
 			.sort((a, b) => a.cooldownUntil - b.cooldownUntil);
-
 		await this.renderList(
 			filtered,
 			'Users in Active Timeout',
@@ -165,5 +218,35 @@ export class SpamMonitorHandler {
 
 	public async sendNotification(text: string): Promise<void> {
 		await this.notify(text);
+	}
+	public async manageUser(
+		username: string,
+		triggerId: string,
+	): Promise<void> {
+		if (!username) {
+			await this.notify(slashNotifications.MANAGE_MISSING_USERNAME);
+			return;
+		}
+
+		const targetUser = await this.read
+			.getUserReader()
+			.getByUsername(username);
+
+		if (!targetUser) {
+			await this.notify(slashNotifications.USER_NOT_FOUND(username));
+			return;
+		}
+
+		const record = await UserStatusStore.get(this.read, targetUser.id);
+
+		if (!record) {
+			await this.notify(slashNotifications.USER_NOT_FOUND(username));
+			return;
+		}
+
+		const modal = buildManageUserModal(record, this.appId);
+		await this.modify
+			.getUiController()
+			.openSurfaceView(modal, { triggerId }, this.sender);
 	}
 }

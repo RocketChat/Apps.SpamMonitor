@@ -44,7 +44,6 @@ export const AdminChannelMessages = {
 		`**SpamMonitor uninstalled.**\n\n` +
 		`The \`#${channelName}\` channel has been removed.`,
 };
-
 export const AdminActionMessages = {
 	vouch: (targetUsername: string, adminUsername: string) =>
 		`@${targetUsername} vouched successfully by @${adminUsername} — now fully exempt from spam monitoring.`,
