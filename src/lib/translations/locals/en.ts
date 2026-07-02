@@ -1,5 +1,9 @@
 import { ConfirmMeta } from '../../../definition/confirmationModal';
-import { SpammingLevel } from '../../../definition/spamlevel';
+import { levelLabel } from '../../../definition/levelConfig';
+import {
+	SPAMMING_LEVEL_LABELS,
+	SpammingLevel,
+} from '../../../definition/spamlevel';
 import { ManageUserActionId } from '../../../enums/modals/manageUsers';
 
 export type NotifyFn = (username: string, duration: string) => string;
@@ -22,7 +26,7 @@ export const AdminChannelMessages = {
 		`This is the dedicated admin channel for the SpamMonitor app. ` +
 		`All slash commands must be run from this channel.\n\n` +
 		`---\n\n` +
-		`**Spam Levels**\n` +
+		`**Spam Levels and Default Actions** \n` +
 		`• \`Clean\` — No issues detected\n` +
 		`• \`Monitored\` — Unusual activity flagged; user is being watched\n` +
 		`• \`Restricted\` — User placed on a timed cooldown\n` +
@@ -31,7 +35,11 @@ export const AdminChannelMessages = {
 		`---\n\n` +
 		`**Available Commands** (\`/spammonitor <subcommand>\`)\n` +
 		`• \`list\` — View all currently flagged users\n` +
+		`• \`manage <username>\` — Open admin controls for a flagged user\n` +
+		`• \`level\` — Configure action and notification per spam level\n\n` +
 		`• \`help\` — Show this help message\n\n` +
+		`---\n\n` +
+		`**Configure Settings**\n` +
 		`_Configure thresholds and windows in Marketplace → Private Apps → Apps.SpamMonitor._`,
 
 	installDm: (channelName: string) =>
@@ -86,5 +94,48 @@ export const ConfirmActionMeta: Partial<
 			'This will immediately reset the spam level to *Clean*, removing all restrictions.',
 		confirmLabel: 'Reset to Clean',
 		danger: true,
+	},
+};
+
+export const LevelConfigStrings = {
+	headerText:
+		'*Configure level behaviour* — choose a level, set what ' +
+		'the bot does when a user reaches it, and optionally customise ' +
+		'the message sent to them. Leave the message blank for the default.',
+	levelOverviewModalHeader:
+		'*Spam Level Configuration*\n' +
+		"Review each level's behaviour below. " +
+		"Press *Edit* to change a level's action, timeout, or notification message.",
+	timeoutLabel:
+		'Timeout duration (seconds) — only used when action is "Timeout"',
+	customNotificationLabel:
+		'Custom notification message use {user} and {duration} as placeholders - (leave blank for default)',
+	customNotificationHint: `Leave blank to use the default message shown in the placeholder.`,
+	defaultNotificationInputPlaceholder:
+		'Message sent to the user when this level triggers...',
+} as const;
+
+export const levelConfigNotification = {
+	LevelConfigNoChangesFound: (level: SpammingLevel) =>
+		`No changes detected for *${levelLabel(level)}*.`,
+	LevelConfigUpdateMessage: (adminUsername: string) =>
+		`Level configuration updated* by @${adminUsername}*`,
+	LevelConfigSaveSuccess: (adminUsername: string) =>
+		`Level configuration saved successfully by @${adminUsername}`,
+	LevelConfigResetToDefault: (level: SpammingLevel, adminUsername: string) =>
+		`*${SPAMMING_LEVEL_LABELS[level]}* has been reset to its default settings by @${adminUsername}.`,
+};
+
+export const confirmationModal = {
+	ManageUserAction: {
+		title: 'Confirm Action',
+		description: 'Are you sure you want to perform this action?',
+		confirmLabel: 'Confirm',
+	},
+	LevelResetToDefault: {
+		title: 'Reset to Defaults',
+		description:
+			"Are you sure you want to reset this level's action, timeout, and message back to defaults? This cannot be undone.",
+		confirmLabel: 'Reset',
 	},
 };
