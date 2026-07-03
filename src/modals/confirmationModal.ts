@@ -10,22 +10,29 @@ import {
 	CONFIRM_ACTION_MODAL_ID,
 	BlockId,
 } from '../enums/modals/manageUsers';
-import { ConfirmActionMeta } from '../lib/translations/locals/en';
+import {
+	ConfirmActionMeta,
+	confirmationModal,
+} from '../lib/translations/locals/en';
+import {
+	LEVEL_RESET_ACTION_ID,
+	ConfirmMeta,
+} from '../definition/confirmationModal';
 
 export function buildConfirmActionModal(
-	realAction: ManageUserActionId,
-	userId: string,
-	username: string,
+	realAction: ManageUserActionId | typeof LEVEL_RESET_ACTION_ID,
+	identifier: string,
+	displayName: string,
 	appId: string,
 	roomId?: string,
+	overrideMeta?: ConfirmMeta,
+	showAtMention = true,
 ): IUIKitSurfaceViewParam {
-	const meta = ConfirmActionMeta[realAction] ?? {
-		title: 'Confirm Action',
-		description: 'Are you sure you want to perform this action?',
-		confirmLabel: 'Confirm',
-	};
-
-	const viewId = `${CONFIRM_ACTION_MODAL_ID}::${realAction}::${userId}::${roomId}`;
+	const meta: ConfirmMeta =
+		overrideMeta ??
+		ConfirmActionMeta[realAction as ManageUserActionId] ??
+		confirmationModal.ManageUserAction;
+	const viewId = `${CONFIRM_ACTION_MODAL_ID}::${realAction}::${identifier}::${roomId}`;
 
 	const submitButton: ButtonElement = {
 		type: 'button',
@@ -49,7 +56,9 @@ export function buildConfirmActionModal(
 		blockId: BlockId.CONFIRM_TARGET,
 		text: {
 			type: TextObjectType.MRKDWN,
-			text: `*Target:* @${username}\n\n${meta.description}`,
+			text: showAtMention
+				? `*Target:* @${displayName}\n\n${meta.description}`
+				: `*${displayName}*\n\n${meta.description}`,
 		},
 	};
 
@@ -61,4 +70,21 @@ export function buildConfirmActionModal(
 		close: closeButton,
 		blocks: [targetSection],
 	};
+}
+
+export function buildResetLevelConfirmModal(
+	level: number,
+	levelDisplayName: string,
+	appId: string,
+	roomId?: string,
+): IUIKitSurfaceViewParam {
+	return buildConfirmActionModal(
+		LEVEL_RESET_ACTION_ID,
+		String(level),
+		levelDisplayName,
+		appId,
+		roomId,
+		confirmationModal.LevelResetToDefault,
+		false,
+	);
 }
