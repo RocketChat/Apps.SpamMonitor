@@ -18,7 +18,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 	public command = 'spammonitor';
 	public i18nDescription = 'SpamMonitor_Command_Description';
 	public i18nParamsExample =
-		'list all | list timeout | list <Level> | manage <username>';
+		'list all | list timeout | list <Level> | manage <username> | level';
 	public providesPreview = false;
 
 	constructor(private readonly appId: string) {}
@@ -97,6 +97,18 @@ export class SpamMonitorCommand implements ISlashCommand {
 				await handler.manageUser(username, triggerId);
 				break;
 			}
+
+			case SpamMonitorParam.LEVEL: {
+				if (!triggerId) {
+					await handler.sendNotification(
+						slashNotifications.LEVEL_MISSING_LEVEL,
+					);
+					return;
+				}
+				await handler.configureLevels(triggerId);
+				break;
+			}
+
 			default:
 				await handler.sendNotification(slashCommandHelp.HELP);
 				break;

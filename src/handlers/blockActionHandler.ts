@@ -8,7 +8,10 @@ import {
 	IUIKitResponse,
 	UIKitBlockInteractionContext,
 } from '@rocket.chat/apps-engine/definition/uikit';
-import { buildConfirmActionModal } from '../modals/confirmationModal';
+import {
+	buildConfirmActionModal,
+	buildResetLevelConfirmModal,
+} from '../modals/confirmationModal';
 import { buildManageUserModal } from '../modals/manageUsers';
 import { RoomInteractionStorage } from '../persistence/roomInteraction';
 import { UserStatusStore } from '../persistence/userStatusStore';
@@ -17,6 +20,14 @@ import {
 	CONFIRM_TO_ACTION,
 	ManageUserActionId,
 } from '../enums/modals/manageUsers';
+import {
+	EditLevelActionId,
+	OverviewActionId,
+} from '../enums/modals/levelConfig';
+import { CONFIGURABLE_LEVELS, levelLabel } from '../definition/levelConfig';
+import { SpammingLevel } from '../definition/spamlevel';
+import { buildEditLevelModal } from '../modals/editLevelModal';
+import { buildLevelConfigOverviewModal } from '../modals/levelOverviewModal';
 
 export class BlockActionHandler {
 	constructor(
@@ -36,6 +47,73 @@ export class BlockActionHandler {
 			this.read.getPersistenceReader(),
 			user.id,
 		);
+		if (actionId.startsWith(EditLevelActionId.RESET_TO_DEFAULT)) {
+			if (!triggerId) {
+				return this.context.getInteractionResponder().errorResponse();
+			}
+
+			const raw = parseInt(value ?? '', 10);
+			const level: SpammingLevel = CONFIGURABLE_LEVELS.includes(
+				raw as SpammingLevel,
+			)
+				? (raw as SpammingLevel)
+				: CONFIGURABLE_LEVELS[0];
+
+			const roomId = await roomStorage.getInteractionRoomId();
+
+			const confirmModal = buildResetLevelConfirmModal(
+				level,
+				levelLabel(level),
+				this.appId,
+				roomId ?? undefined,
+			);
+
+			await this.modify
+				.getUiController()
+				.openSurfaceView(confirmModal, { triggerId }, user);
+
+			return this.context.getInteractionResponder().successResponse();
+		}
+		if (actionId === EditLevelActionId.BACK_TO_OVERVIEW) {
+			if (!triggerId) {
+				return this.context.getInteractionResponder().errorResponse();
+			}
+
+			const overviewModal = await buildLevelConfigOverviewModal(
+				this.read,
+				this.appId,
+			);
+
+			await this.modify
+				.getUiController()
+				.openSurfaceView(overviewModal, { triggerId }, user);
+
+			return this.context.getInteractionResponder().successResponse();
+		}
+		if (actionId.startsWith(OverviewActionId.EDIT_LEVEL_PREFIX)) {
+			if (!triggerId) {
+				return this.context.getInteractionResponder().errorResponse();
+			}
+
+			const raw = parseInt(value ?? '', 10);
+			const level: SpammingLevel = CONFIGURABLE_LEVELS.includes(
+				raw as SpammingLevel,
+			)
+				? (raw as SpammingLevel)
+				: CONFIGURABLE_LEVELS[0];
+
+			const editModal = await buildEditLevelModal(
+				this.read,
+				this.appId,
+				level,
+			);
+
+			await this.modify
+				.getUiController()
+				.openSurfaceView(editModal, { triggerId }, user);
+
+			return this.context.getInteractionResponder().successResponse();
+		}
 
 		if (actionId === ManageUserActionId.OPEN_MANAGE_MODAL) {
 			if (!value || !triggerId) {
