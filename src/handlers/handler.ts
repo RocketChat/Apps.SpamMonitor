@@ -19,6 +19,7 @@ import {
 	ManageUserActionId,
 } from '../enums/modals/manageUsers';
 import { TextObjectType } from '@rocket.chat/ui-kit';
+import { buildLevelConfigOverviewModal } from '../modals/levelOverviewModal';
 
 export class SpamMonitorHandler {
 	constructor(
@@ -245,6 +246,16 @@ export class SpamMonitorHandler {
 		}
 
 		const modal = buildManageUserModal(record, this.appId);
+		await this.modify
+			.getUiController()
+			.openSurfaceView(modal, { triggerId }, this.sender);
+	}
+
+	public async configureLevels(triggerId: string): Promise<void> {
+		const modal = await buildLevelConfigOverviewModal(
+			this.read,
+			this.appId,
+		);
 		await this.modify
 			.getUiController()
 			.openSurfaceView(modal, { triggerId }, this.sender);

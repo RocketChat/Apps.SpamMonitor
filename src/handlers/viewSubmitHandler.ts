@@ -11,14 +11,27 @@ import {
 import { IUser } from '@rocket.chat/apps-engine/definition/users';
 import { IRoom } from '@rocket.chat/apps-engine/definition/rooms';
 import { UserStatusStore } from '../persistence/userStatusStore';
-import { SPAMMING_LEVEL_LABELS } from '../definition/spamlevel';
+import { SPAMMING_LEVEL_LABELS, SpammingLevel } from '../definition/spamlevel';
 import {
 	ManageUserActionId,
 	CONFIRM_ACTION_MODAL_ID,
 } from '../enums/modals/manageUsers';
 import { sendNotification } from '../lib/utils/notifications';
 import { RoomInteractionStorage } from '../persistence/roomInteraction';
-import { AdminActionMessages } from '../lib/translations/locals/en';
+import {
+	AdminActionMessages,
+	levelConfigNotification,
+} from '../lib/translations/locals/en';
+import { EDIT_LEVEL_MODAL_ID } from '../enums/modals/levelConfig';
+import { LevelConfigStore } from '../persistence/levelConfigStore';
+import {
+	diffLevelConfig,
+	formatConfigChangeSummary,
+	hasChanges,
+	parseEditLevelConfig,
+	parseLevelFromEditModalId,
+} from '../modals/editLevelModal';
+import { LEVEL_RESET_ACTION_ID } from '../definition/confirmationModal';
 
 export class ViewSubmitHandler {
 	constructor(
@@ -32,6 +45,29 @@ export class ViewSubmitHandler {
 	public async handle(): Promise<IUIKitResponse> {
 		const { view, user } = this.context.getInteractionData();
 
+		if (view.id.startsWith(EDIT_LEVEL_MODAL_ID)) {
+			const roomStorage = new RoomInteractionStorage(
+				this.persistence,
+				this.read.getPersistenceReader(),
+				user.id,
+			);
+			const roomId = await roomStorage.getInteractionRoomId();
+			const room = roomId
+				? await this.read.getRoomReader().getById(roomId)
+				: null;
+
+			await this.handleEditLevelSubmit(
+				view.id,
+				view.state as Record<string, Record<string, unknown>>,
+				user,
+				room,
+				this.read,
+				this.modify,
+				this.persistence,
+			);
+			return this.context.getInteractionResponder().successResponse();
+		}
+
 		if (!view.id.startsWith(CONFIRM_ACTION_MODAL_ID)) {
 			return this.context.getInteractionResponder().successResponse();
 		}
@@ -43,6 +79,14 @@ export class ViewSubmitHandler {
 		}
 
 		const [, realAction, userId, roomId] = parts;
+		if (realAction === LEVEL_RESET_ACTION_ID) {
+			const level = parseInt(userId, 10) as SpammingLevel;
+			const room = roomId
+				? await this.read.getRoomReader().getById(roomId)
+				: null;
+			await this.handleResetLevelToDefault(level, user, room);
+			return this.context.getInteractionResponder().successResponse();
+		}
 
 		const targetUser = await this.read.getUserReader().getById(userId);
 		if (!targetUser) {
@@ -87,7 +131,58 @@ export class ViewSubmitHandler {
 
 		return this.context.getInteractionResponder().successResponse();
 	}
-
+	private async handleResetLevelToDefault(
+		level: SpammingLevel,
+		admin: IUser,
+		room: IRoom | null | undefined,
+	): Promise<void> {
+		await LevelConfigStore.resetLevel(this.read, this.persistence, level);
+		if (!room) return;
+		await sendNotification(this.read, this.modify, admin, room, {
+			message: levelConfigNotification.LevelConfigResetToDefault(
+				level,
+				admin.username,
+			),
+		});
+	}
+	private async handleEditLevelSubmit(
+		viewId: string,
+		state: Record<string, Record<string, unknown>>,
+		admin: IUser,
+		room: IRoom | null | undefined,
+		read: IRead,
+		modify: IModify,
+		persistence: IPersistence,
+	): Promise<void> {
+		const level = parseLevelFromEditModalId(viewId);
+		if (level === undefined) return;
+		const before = await LevelConfigStore.get(read, level);
+		const incoming = parseEditLevelConfig(state, level, before);
+		if (!incoming) return;
+		const diff = diffLevelConfig(before, incoming);
+		if (!hasChanges(diff)) {
+			if (room) {
+				await sendNotification(read, modify, admin, room, {
+					message:
+						levelConfigNotification.LevelConfigNoChangesFound(
+							level,
+						),
+				});
+			}
+			return;
+		}
+		await LevelConfigStore.save(read, persistence, incoming);
+		if (!room) return;
+		const changeSummary = formatConfigChangeSummary(
+			level,
+			before,
+			incoming,
+			diff,
+		);
+		await sendNotification(read, modify, admin, room, {
+			message: changeSummary,
+		});
+	}
 	private async executeAction(
 		action: ManageUserActionId,
 		targetUser: IUser,

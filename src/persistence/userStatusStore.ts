@@ -7,13 +7,13 @@ import {
 	RocketChatAssociationRecord,
 } from '@rocket.chat/apps-engine/definition/metadata';
 import {
-	COOLDOWN_DURATIONS,
 	ESCALATION_THRESHOLDS,
 	NEXT_LEVEL,
 	PREV_LEVEL,
 	SpammingLevel,
 	UserSpamRecord,
 } from '../definition/spamlevel';
+import { DEFAULT_LEVEL_CONFIGS, LevelConfig } from '../definition/levelConfig';
 
 const ASSOC_SCOPE = 'antispam-status';
 export class UserStatusStore {
@@ -73,6 +73,7 @@ export class UserStatusStore {
 		persistence: IPersistence,
 		userId: string,
 		username: string,
+		levelConfig: Record<SpammingLevel, LevelConfig> = DEFAULT_LEVEL_CONFIGS,
 	): Promise<UserSpamRecord> {
 		const existing = await UserStatusStore.get(read, userId);
 		const current: UserSpamRecord = existing ?? {
@@ -95,14 +96,16 @@ export class UserStatusStore {
 		if (canEscalate) {
 			const nextLevel =
 				NEXT_LEVEL[current.spammingLevel] ?? current.spammingLevel;
+			const config = levelConfig[nextLevel];
+			const cooldownMs =
+				config.action === 'timeout' && config.timeoutSeconds
+					? config.timeoutSeconds * 1000
+					: 0;
 			const updated: UserSpamRecord = {
 				userId,
 				username,
 				spammingLevel: nextLevel,
-				cooldownUntil:
-					COOLDOWN_DURATIONS[nextLevel] > 0
-						? now + COOLDOWN_DURATIONS[nextLevel]
-						: 0,
+				cooldownUntil: cooldownMs > 0 ? now + cooldownMs : 0,
 				lastEscalation: now,
 				totalFlags: current.totalFlags + 1,
 				flagsAtLevel: 0,

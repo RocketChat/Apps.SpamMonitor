@@ -8,6 +8,7 @@ import { IUser } from '@rocket.chat/apps-engine/definition/users';
 import { MessageCache } from './cache/messageCache';
 import { UserStatusStore } from '../persistence/userStatusStore';
 import { AnalysisResult, SpamConfig } from '../definition/spamProcessor';
+import { LevelConfigStore } from '../persistence/levelConfigStore';
 
 export class SpamProcessor {
 	constructor(
@@ -69,11 +70,13 @@ export class SpamProcessor {
 		}
 
 		const flag = async (trigger: string): Promise<AnalysisResult> => {
+			const configs = await LevelConfigStore.getAll(read);
 			const record = await UserStatusStore.escalate(
 				read,
 				persistence,
 				userId,
 				username,
+				configs,
 			);
 			this.cache.add(
 				userId,

@@ -3,6 +3,7 @@ import { IUser } from '@rocket.chat/apps-engine/definition/users';
 import { IRoom, RoomType } from '@rocket.chat/apps-engine/definition/rooms';
 import { SpammingLevel, UserSpamRecord } from '../definition/spamlevel';
 import { buildMessage } from '../lib/utils/messageUtils';
+import { LevelConfig } from '../definition/levelConfig';
 
 export class RestrictionManager {
 	public static async dmUser(
@@ -56,17 +57,14 @@ export class RestrictionManager {
 		user: IUser,
 		record: UserSpamRecord,
 		options: { levelChanged?: boolean } = {},
+		config: LevelConfig,
 	): Promise<void> {
 		const { levelChanged = true } = options;
 		if (!levelChanged || record.spammingLevel === SpammingLevel.Clean) {
 			return;
 		}
-
-		const message = buildMessage(record);
-		if (!message) {
-			return;
-		}
-
+		const message = buildMessage(record, config);
+		if (!message) return;
 		await RestrictionManager.dmUser(read, modify, user, message);
 	}
 }

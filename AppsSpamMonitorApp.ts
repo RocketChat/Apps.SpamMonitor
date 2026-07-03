@@ -22,6 +22,7 @@ import { ISetting } from '@rocket.chat/apps-engine/definition/settings';
 import {
 	IUIKitResponse,
 	UIKitBlockInteractionContext,
+	UIKitViewCloseInteractionContext,
 	UIKitViewSubmitInteractionContext,
 } from '@rocket.chat/apps-engine/definition/uikit';
 import { IUIKitInteractionHandler } from '@rocket.chat/apps-engine/definition/uikit/IUIKitActionHandler';
@@ -43,6 +44,7 @@ import {
 } from './src/constants/config';
 import { ViewSubmitHandler } from './src/handlers/viewSubmitHandler';
 import { BlockActionHandler } from './src/handlers/blockActionHandler';
+import { LevelConfigStore } from './src/persistence/levelConfigStore';
 
 export class AppsSpamMonitorApp
 	extends App
@@ -273,6 +275,10 @@ export class AppsSpamMonitorApp
 				persistence,
 			);
 			if (result?.flagged && result.record && result.levelChanged) {
+				const levelConfig = await LevelConfigStore.get(
+					read,
+					result.record.spammingLevel,
+				);
 				await RestrictionManager.applyAction(
 					read,
 					modify,
@@ -281,6 +287,7 @@ export class AppsSpamMonitorApp
 					{
 						levelChanged: result.levelChanged,
 					},
+					levelConfig,
 				);
 			}
 		} catch (err) {
