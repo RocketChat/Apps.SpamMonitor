@@ -38,7 +38,7 @@ export function buildConfirmActionModal(
 		type: 'button',
 		appId,
 		blockId: BlockId.CONFIRM_SUBMIT,
-		actionId: 'confirm_action_submit',
+		actionId: BlockId.CONFIRM_SUBMIT,
 		text: { type: TextObjectType.PLAIN_TEXT, text: meta.confirmLabel },
 		style: meta.danger ? 'danger' : 'primary',
 	};
@@ -47,7 +47,7 @@ export function buildConfirmActionModal(
 		type: 'button',
 		appId,
 		blockId: BlockId.CONFIRM_CLOSE,
-		actionId: 'confirm_action_close',
+		actionId: BlockId.CONFIRM_CLOSE,
 		text: { type: TextObjectType.PLAIN_TEXT, text: 'Cancel' },
 	};
 
