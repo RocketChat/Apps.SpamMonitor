@@ -1,3 +1,4 @@
+import { MAX_ROOMS_PER_SUMMARY } from '../../../constants/scheduleLogStore';
 import { ConfirmMeta } from '../../../definition/confirmationModal';
 import { levelLabel } from '../../../definition/levelConfig';
 import {
@@ -37,6 +38,7 @@ export const AdminChannelMessages = {
 		`• \`list\` — View all currently flagged users\n` +
 		`• \`manage <username>\` — Open admin controls for a flagged user\n` +
 		`• \`level\` — Configure action and notification per spam level\n\n` +
+		`• \`schedule\` — Configure schedule for scheduled spam reports\n\n` +
 		`• \`help\` — Show this help message\n\n` +
 		`---\n\n` +
 		`**Configure Settings**\n` +
@@ -138,4 +140,136 @@ export const confirmationModal = {
 			"Are you sure you want to reset this level's action, timeout, and message back to defaults? This cannot be undone.",
 		confirmLabel: 'Reset',
 	},
+};
+
+export const scheduleNotification = {
+	ScheduleSet: (adminUsername: string) =>
+		`@${adminUsername} set up the flagged-user report schedule for this channel.`,
+	ScheduleRemoved: (adminUsername: string) =>
+		`@${adminUsername} removed the flagged-user report schedule for this channel. No more automatic reports will be sent.`,
+};
+
+export const dailyReportNotification = {
+	title: (dateStr: string) => `**Daily Anti-Spam Report** — ${dateStr}`,
+
+	allClear: {
+		heading: '**All Clear** — no spam activity in this period.',
+		flagsLine: '• Flags: 0',
+		flaggedUsersLine: '• Flagged users: 0',
+		trackedUsersLine: (count: number) => `• Tracked users: ${count}`,
+	},
+
+	summary: {
+		heading: '**Summary:**',
+		flagsLine: (count: number) => `• Flags this period: ${count}`,
+		flaggedUsersLine: (count: number) =>
+			`• Currently flagged users: ${count}`,
+		adminActionsLine: (count: number) =>
+			`• Admin actions this period: ${count}`,
+		trackedUsersLine: (count: number) => `• Total tracked users: ${count}`,
+	},
+
+	levelGroup: {
+		heading: (label: string, count: number) => `**${label}** (${count}):`,
+		userLine: (username: string, totalFlags: number | string) =>
+			`  • @${username} — ${totalFlags} total flags`,
+	},
+
+	flaggedUsers: {
+		heading: '**Flagged Users (this period):**',
+		userLine: (
+			username: string,
+			flagCount: number,
+			triggerList: string,
+			currentLabel: string,
+		) =>
+			`  • @${username} — ${flagCount} flags (${triggerList}) — currently: ${currentLabel}`,
+		rooms: (roomsList: string) => `      _Rooms: ${roomsList}_`,
+		roomsTruncated: (roomsList: string) =>
+			`      _Rooms: ${roomsList} (+more, showing first ${MAX_ROOMS_PER_SUMMARY})_`,
+	},
+
+	adminActions: {
+		heading: '**Admin Actions (this period):**',
+		actionLine: (username: string, label: string, adminUsername: string) =>
+			`  • @${username} — ${label} by @${adminUsername}`,
+	},
+
+	moreCount: (n: number) => `  _...and ${n} more_`,
+};
+
+export const scheduleSetupModalText = {
+	everyDay: 'Every day',
+	days: {
+		sun: 'Sun',
+		mon: 'Mon',
+		tue: 'Tue',
+		wed: 'Wed',
+		thu: 'Thu',
+		fri: 'Fri',
+		sat: 'Sat',
+	},
+	cadenceLabels: {
+		daily: 'Daily',
+		weekdays: 'Weekdays',
+		weekly: 'Weekly',
+		custom: 'Custom',
+	},
+	setup: {
+		headerDefault:
+			'Configure when the flagged-user report gets sent to this channel.',
+		headerExisting: (desc: string) =>
+			`*Current schedule:* ${desc}\n\nSet up a replacement below — this overwrites the existing schedule when confirmed.`,
+		deleteButton: 'Delete current schedule',
+		cadenceLabel: 'Cadence',
+		cadencePlaceholder: 'Select cadence',
+		cadenceHint:
+			'*Daily:* every day  ·  *Weekdays:* Mon–Fri  ·  *Weekly:* every Monday\n*Custom:* pick the exact days below (only used when Cadence = Custom).',
+		daysLabel: 'Days (Custom cadence only)',
+		daysPlaceholder: 'Select days',
+		timeLabel: 'Time',
+		title: 'Schedule Report',
+		previewButton: 'Preview',
+	},
+	confirm: {
+		title: 'Confirm Schedule',
+		backButton: '← Back',
+		confirmButton: 'Confirm & Schedule',
+		summary: (
+			cadence: string,
+			days: string,
+			time: string,
+			offset: string,
+			nextRun: string,
+			hadExisting: boolean,
+		) =>
+			`*Cadence:* ${cadence}\n` +
+			`*Days:* ${days}\n` +
+			`*Time:* ${time} (${offset})\n\n` +
+			`*Next run:* ${nextRun}` +
+			(hadExisting ? `\n\n_This replaces the existing schedule._` : ''),
+	},
+	delete: {
+		title: 'Delete Schedule',
+		confirmButton: 'Delete Schedule',
+		summary: (
+			cadence: string,
+			days: string,
+			time: string,
+			offset: string,
+		) =>
+			`*Existing schedule:*\n` +
+			`*Cadence:* ${cadence}\n` +
+			`*Days:* ${days}\n` +
+			`*Time:* ${time} (${offset})\n\n` +
+			`*This will stop and remove the running schedule job. No more automatic reports will be sent until a new schedule is set up.*`,
+	},
+};
+
+export const commonModalText = {
+	cancel: 'Cancel',
+};
+export const scheduleValidationText = {
+	invalidTime: 'Enter a valid time as HH:MM, e.g. 09:00',
+	missingCustomDays: 'Select at least one day for Custom cadence.',
 };
