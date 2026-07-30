@@ -11,6 +11,8 @@ import { daysBetween } from '../../lib/utils/scheduleSummaryUtils';
 import {
 	MAX_RECENT_ACTIONS,
 	MAX_DAILY_ACTIONS,
+	DAY_RECORD_RETENTION_DAYS,
+	MAX_REPORT_WINDOW_DAYS,
 } from '../../constants/scheduleLogStore';
 
 export class AdminActionLogStore {
@@ -18,6 +20,7 @@ export class AdminActionLogStore {
 		return new Date(timestamp).toISOString().slice(0, 10);
 	}
 
+	private static lastPrunedDay: string | null = null;
 	private static recentActionsAssocs(
 		userId: string,
 	): RocketChatAssociationRecord[] {
@@ -57,7 +60,12 @@ export class AdminActionLogStore {
 			),
 		];
 	}
-
+	private static dayIndexAssoc(): RocketChatAssociationRecord {
+		return new RocketChatAssociationRecord(
+			RocketChatAssociationModel.MISC,
+			'antispam-action-days-index',
+		);
+	}
 	public static async log(
 		persistence: IPersistence,
 		read: IRead,
@@ -86,7 +94,10 @@ export class AdminActionLogStore {
 		}
 
 		await persistence.updateByAssociations(dailyAssocs, dailyDoc, true);
-
+		if (day !== AdminActionLogStore.lastPrunedDay) {
+			await AdminActionLogStore.pruneOldDays(persistence, read, day);
+			AdminActionLogStore.lastPrunedDay = day;
+		}
 		const recentAssocs = AdminActionLogStore.recentActionsAssocs(
 			entry.userId,
 		);
@@ -139,12 +150,54 @@ export class AdminActionLogStore {
 		read: IRead,
 		sinceTimestamp: number,
 	): Promise<AdminActionLogEntry[]> {
-		const days = daysBetween(sinceTimestamp);
+		if (!Number.isFinite(sinceTimestamp)) {
+			throw new Error(
+				`getActionsSince: invalid sinceTimestamp: ${sinceTimestamp}`,
+			);
+		}
+
+		const days = daysBetween(sinceTimestamp).slice(-MAX_REPORT_WINDOW_DAYS);
+
 		const perDay = await Promise.all(
 			days.map((day) => AdminActionLogStore.getActionsForDay(read, day)),
 		);
 		return perDay
 			.reduce((acc, day) => acc.concat(day), [])
 			.filter((entry) => entry.timestamp >= sinceTimestamp);
+	}
+	private static async pruneOldDays(
+		persistence: IPersistence,
+		read: IRead,
+		day: string,
+	): Promise<void> {
+		const indexAssoc = AdminActionLogStore.dayIndexAssoc();
+		const existingIndex = await read
+			.getPersistenceReader()
+			.readByAssociation(indexAssoc);
+		const indexDoc = existingIndex.length
+			? (existingIndex[0] as { days: string[] })
+			: { days: [] };
+
+		if (!indexDoc.days.includes(day)) {
+			indexDoc.days.push(day);
+		}
+
+		const cutoff = new Date();
+		cutoff.setUTCDate(cutoff.getUTCDate() - DAY_RECORD_RETENTION_DAYS);
+		const cutoffKey = cutoff.toISOString().slice(0, 10);
+
+		const staleDays = indexDoc.days.filter((d) => d < cutoffKey);
+		if (staleDays.length) {
+			await Promise.all(
+				staleDays.map((staleDay) =>
+					persistence.removeByAssociation(
+						AdminActionLogStore.dailyActionScopeAssoc(staleDay),
+					),
+				),
+			);
+			indexDoc.days = indexDoc.days.filter((d) => d >= cutoffKey);
+		}
+
+		await persistence.updateByAssociations([indexAssoc], indexDoc, true);
 	}
 }

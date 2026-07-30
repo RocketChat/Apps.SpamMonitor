@@ -14,6 +14,8 @@ import { daysBetween } from '../../lib/utils/scheduleSummaryUtils';
 import {
 	MAX_RECENT_EVENTS,
 	MAX_ROOMS_PER_SUMMARY,
+	MAX_REPORT_WINDOW_DAYS,
+	DAY_RECORD_RETENTION_DAYS,
 } from '../../constants/scheduleLogStore';
 
 export class FlagLogStore {
@@ -21,6 +23,7 @@ export class FlagLogStore {
 		return new Date(timestamp).toISOString().slice(0, 10);
 	}
 
+	private static lastPrunedDay: string | null = null;
 	private static dailySummaryAssocs(
 		userId: string,
 		day: string,
@@ -59,13 +62,19 @@ export class FlagLogStore {
 		];
 	}
 
+	private static dayIndexAssoc(): RocketChatAssociationRecord {
+		return new RocketChatAssociationRecord(
+			RocketChatAssociationModel.MISC,
+			'antispam-flag-days-index',
+		);
+	}
+
 	public static async log(
 		persistence: IPersistence,
 		read: IRead,
 		entry: FlagLogEntry,
 	): Promise<void> {
 		const day = FlagLogStore.dayKey(entry.timestamp);
-
 		const summaryAssocs = FlagLogStore.dailySummaryAssocs(
 			entry.userId,
 			day,
@@ -76,7 +85,6 @@ export class FlagLogStore {
 		const existing = existingSummaries.length
 			? (existingSummaries[0] as DailyFlagSummary)
 			: null;
-
 		const summary: DailyFlagSummary = existing
 			? {
 					...existing,
@@ -106,8 +114,11 @@ export class FlagLogStore {
 					actions: { [entry.action]: 1 },
 					rooms: [entry.roomName],
 				};
-
 		await persistence.updateByAssociations(summaryAssocs, summary, true);
+		if (day !== FlagLogStore.lastPrunedDay) {
+			await FlagLogStore.pruneOldDays(persistence, read, day);
+			FlagLogStore.lastPrunedDay = day;
+		}
 
 		const recentAssocs = FlagLogStore.recentEventsAssocs(entry.userId);
 		const existingRecent = await read
@@ -116,12 +127,10 @@ export class FlagLogStore {
 		const recentDoc = existingRecent.length
 			? (existingRecent[0] as { entries: FlagLogEntry[] })
 			: { entries: [] };
-
 		recentDoc.entries.push(entry);
 		while (recentDoc.entries.length > MAX_RECENT_EVENTS) {
 			recentDoc.entries.shift();
 		}
-
 		await persistence.updateByAssociations(recentAssocs, recentDoc, true);
 	}
 
@@ -129,7 +138,14 @@ export class FlagLogStore {
 		read: IRead,
 		sinceTimestamp: number,
 	): Promise<DailyFlagSummary[]> {
-		const days = daysBetween(sinceTimestamp);
+		if (!Number.isFinite(sinceTimestamp)) {
+			throw new Error(
+				`getDailySummariesSince: invalid sinceTimestamp: ${sinceTimestamp}`,
+			);
+		}
+
+		const days = daysBetween(sinceTimestamp).slice(-MAX_REPORT_WINDOW_DAYS);
+
 		const perDay = await Promise.all(
 			days.map((day) => FlagLogStore.getDailySummariesForDay(read, day)),
 		);
@@ -146,5 +162,40 @@ export class FlagLogStore {
 		return (records as DailyFlagSummary[]).filter(
 			(r) => r.flagCount !== undefined,
 		);
+	}
+	private static async pruneOldDays(
+		persistence: IPersistence,
+		read: IRead,
+		day: string,
+	): Promise<void> {
+		const indexAssoc = FlagLogStore.dayIndexAssoc();
+		const existingIndex = await read
+			.getPersistenceReader()
+			.readByAssociation(indexAssoc);
+		const indexDoc = existingIndex.length
+			? (existingIndex[0] as { days: string[] })
+			: { days: [] };
+
+		if (!indexDoc.days.includes(day)) {
+			indexDoc.days.push(day);
+		}
+
+		const cutoff = new Date();
+		cutoff.setUTCDate(cutoff.getUTCDate() - DAY_RECORD_RETENTION_DAYS);
+		const cutoffKey = cutoff.toISOString().slice(0, 10);
+
+		const staleDays = indexDoc.days.filter((d) => d < cutoffKey);
+		if (staleDays.length) {
+			await Promise.all(
+				staleDays.map((staleDay) =>
+					persistence.removeByAssociation(
+						FlagLogStore.dailyScopeAssoc(staleDay),
+					),
+				),
+			);
+			indexDoc.days = indexDoc.days.filter((d) => d >= cutoffKey);
+		}
+
+		await persistence.updateByAssociations([indexAssoc], indexDoc, true);
 	}
 }
