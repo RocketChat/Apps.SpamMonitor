@@ -20,6 +20,9 @@ import {
 } from '../enums/modals/manageUsers';
 import { TextObjectType } from '@rocket.chat/ui-kit';
 import { buildLevelConfigOverviewModal } from '../modals/levelOverviewModal';
+import { ScheduleStore } from '../persistence/scheduleReports/scheduleStore';
+import { buildScheduleSetupModal } from '../modals/scheduleReportModal';
+import { UIKitSurfaceType } from '@rocket.chat/apps-engine/definition/uikit';
 
 export class SpamMonitorHandler {
 	constructor(
@@ -259,5 +262,16 @@ export class SpamMonitorHandler {
 		await this.modify
 			.getUiController()
 			.openSurfaceView(modal, { triggerId }, this.sender);
+	}
+	public async scheduleReport(triggerId: string): Promise<void> {
+		const existing = await ScheduleStore.get(this.read);
+		const modal = buildScheduleSetupModal(this.appId, existing);
+		await this.modify
+			.getUiController()
+			.openSurfaceView(
+				{ ...modal, type: UIKitSurfaceType.MODAL },
+				{ triggerId },
+				this.sender,
+			);
 	}
 }
