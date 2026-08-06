@@ -21,6 +21,8 @@ import { RoomInteractionStorage } from '../persistence/roomInteraction';
 import {
 	AdminActionMessages,
 	levelConfigNotification,
+	scheduleNotification,
+	scheduleValidationText,
 } from '../lib/translations/locals/en';
 import { EDIT_LEVEL_MODAL_ID } from '../enums/modals/levelConfig';
 import { LevelConfigStore } from '../persistence/levelConfigStore';
@@ -32,6 +34,22 @@ import {
 	parseLevelFromEditModalId,
 } from '../modals/editLevelModal';
 import { LEVEL_RESET_ACTION_ID } from '../definition/confirmationModal';
+import { buildCronExpression } from '../core/scheduleCron';
+import { ScheduleDraft, ScheduleRecord } from '../definition/scheduleReports';
+import { CadencePreset } from '../enums/modals/scheduleReports';
+import {
+	SCHEDULE_SETUP_MODAL_ID,
+	ScheduleBlockId,
+} from '../enums/modals/scheduleReports';
+import {
+	buildScheduleSetupModal,
+	parseScheduleSetupState,
+} from '../modals/scheduleReportModal';
+import { DAILY_REPORT_JOB_ID } from '../core/schedulereport';
+import { LOGGED_ACTIONS, LoggedUserAction } from '../enums/scheduleReports';
+import { AdminActionLogStore } from '../persistence/scheduleReports/adminActionLogStore';
+import { ScheduleDraftStorage } from '../persistence/scheduleReports/scheduleDraftStore';
+import { ScheduleStore } from '../persistence/scheduleReports/scheduleStore';
 
 export class ViewSubmitHandler {
 	constructor(
@@ -39,6 +57,7 @@ export class ViewSubmitHandler {
 		private readonly http: IHttp,
 		private readonly persistence: IPersistence,
 		private readonly modify: IModify,
+		private readonly appId: string,
 		private readonly context: UIKitViewSubmitInteractionContext,
 	) {}
 
@@ -68,6 +87,14 @@ export class ViewSubmitHandler {
 			return this.context.getInteractionResponder().successResponse();
 		}
 
+		if (view.id === SCHEDULE_SETUP_MODAL_ID) {
+			return this.handleScheduleSetupSubmit(
+				view.id,
+				view.state as Record<string, Record<string, unknown>>,
+				user,
+				this.appId,
+			);
+		}
 		if (!view.id.startsWith(CONFIRM_ACTION_MODAL_ID)) {
 			return this.context.getInteractionResponder().successResponse();
 		}
@@ -95,6 +122,9 @@ export class ViewSubmitHandler {
 		const notifyRoom = roomId
 			? await this.read.getRoomReader().getById(roomId)
 			: null;
+		function isLoggedUserAction(value: string): value is LoggedUserAction {
+			return LOGGED_ACTIONS.includes(value);
+		}
 		if (!notifyRoom) {
 			const roomStorage = new RoomInteractionStorage(
 				this.persistence,
@@ -112,24 +142,174 @@ export class ViewSubmitHandler {
 				);
 				return this.context.getInteractionResponder().successResponse();
 			}
+			if (!isLoggedUserAction(realAction)) {
+				console.error(
+					`[ViewSubmitHandler] Unknown action in view id: ${realAction}`,
+				);
+				return this.context.getInteractionResponder().successResponse();
+			}
 
 			await this.executeAction(
-				realAction as ManageUserActionId,
+				realAction as LoggedUserAction,
 				targetUser,
 				user,
 				fallbackRoom,
 			);
 			return this.context.getInteractionResponder().successResponse();
 		}
+		if (!isLoggedUserAction(realAction)) {
+			console.error(
+				`[ViewSubmitHandler] Unknown action in view id: ${realAction}`,
+			);
+			return this.context.getInteractionResponder().successResponse();
+		}
 
 		await this.executeAction(
-			realAction as ManageUserActionId,
+			realAction as LoggedUserAction,
 			targetUser,
 			user,
 			notifyRoom,
 		);
 
 		return this.context.getInteractionResponder().successResponse();
+	}
+
+	private async handleScheduleSetupSubmit(
+		viewId: string,
+		state: Record<string, Record<string, unknown>>,
+		user: IUser,
+		appId: string,
+	): Promise<IUIKitResponse> {
+		const stored = await ScheduleDraftStorage.get(this.read, user.id);
+
+		if (stored?.stage === 'delete') {
+			return this.finalizeScheduleDeletion(user);
+		}
+
+		if (stored?.stage === 'confirm') {
+			return this.finalizeScheduleCreation(stored.draft, user);
+		}
+
+		const draft = parseScheduleSetupState(
+			state,
+			user.id,
+			(user.utcOffset ?? 0) * 60,
+		);
+		if (!draft) {
+			return this.context.getInteractionResponder().viewErrorResponse({
+				viewId,
+				errors: {
+					[ScheduleBlockId.TIME_INPUT]:
+						scheduleValidationText.invalidTime,
+				},
+			});
+		}
+		if (draft.preset === CadencePreset.CUSTOM && draft.days.length === 0) {
+			return this.context.getInteractionResponder().viewErrorResponse({
+				viewId,
+				errors: {
+					[ScheduleBlockId.DAY_MULTISELECT]:
+						scheduleValidationText.missingCustomDays,
+				},
+			});
+		}
+
+		await ScheduleDraftStorage.save(this.persistence, user.id, {
+			stage: 'confirm',
+			draft,
+		});
+		const existing = await ScheduleStore.get(this.read);
+		const confirmView = buildScheduleSetupModal(appId, existing, draft);
+
+		return this.context
+			.getInteractionResponder()
+			.updateModalViewResponse(confirmView);
+	}
+
+	private async finalizeScheduleCreation(
+		draft: ScheduleDraft,
+		user: IUser,
+	): Promise<IUIKitResponse> {
+		try {
+			const existing = await ScheduleStore.get(this.read);
+			const cronExpression = buildCronExpression(
+				draft.reportTime,
+				draft.utcOffsetMinutes,
+				draft.days,
+			);
+			const record: ScheduleRecord = {
+				...draft,
+				cronExpression,
+				lastReportSentAt: existing?.lastReportSentAt ?? Date.now(),
+				updatedAt: Date.now(),
+			};
+			await ScheduleStore.replace(this.persistence, record);
+			await this.modify
+				.getScheduler()
+				.cancelJob(DAILY_REPORT_JOB_ID)
+				.catch(() => {});
+			await this.modify.getScheduler().scheduleRecurring({
+				id: DAILY_REPORT_JOB_ID,
+				interval: cronExpression,
+				skipImmediate: true,
+			});
+
+			await ScheduleDraftStorage.clear(this.persistence, user.id);
+
+			await this.notifyScheduleChange(
+				user,
+				scheduleNotification.ScheduleSet(user.username),
+			);
+
+			return this.context.getInteractionResponder().successResponse();
+		} catch (err) {
+			console.error(
+				'[ViewSubmitHandler] Failed to finalize schedule',
+				err,
+			);
+			return this.context.getInteractionResponder().errorResponse();
+		}
+	}
+
+	private async finalizeScheduleDeletion(
+		user: IUser,
+	): Promise<IUIKitResponse> {
+		try {
+			await this.modify
+				.getScheduler()
+				.cancelJob(DAILY_REPORT_JOB_ID)
+				.catch(() => {});
+			await ScheduleStore.clear(this.persistence);
+			await ScheduleDraftStorage.clear(this.persistence, user.id);
+
+			await this.notifyScheduleChange(
+				user,
+				scheduleNotification.ScheduleRemoved(user.username),
+			);
+
+			return this.context.getInteractionResponder().successResponse();
+		} catch (err) {
+			console.error('[ViewSubmitHandler] Failed to delete schedule', err);
+			return this.context.getInteractionResponder().errorResponse();
+		}
+	}
+
+	private async notifyScheduleChange(
+		user: IUser,
+		message: string,
+	): Promise<void> {
+		const roomStorage = new RoomInteractionStorage(
+			this.persistence,
+			this.read.getPersistenceReader(),
+			user.id,
+		);
+		const roomId = await roomStorage.getInteractionRoomId();
+		const room = roomId
+			? await this.read.getRoomReader().getById(roomId)
+			: null;
+		if (!room) return;
+
+		await sendNotification(this.read, this.modify, user, room, { message });
 	}
 	private async handleResetLevelToDefault(
 		level: SpammingLevel,
@@ -184,7 +364,7 @@ export class ViewSubmitHandler {
 		});
 	}
 	private async executeAction(
-		action: ManageUserActionId,
+		action: LoggedUserAction,
 		targetUser: IUser,
 		admin: IUser,
 		room: IRoom,
@@ -192,6 +372,20 @@ export class ViewSubmitHandler {
 		const notify = async (message: string) => {
 			await sendNotification(this.read, this.modify, admin, room, {
 				message,
+			});
+		};
+		const logAction = async (
+			previousLevel?: SpammingLevel,
+			newLevel?: SpammingLevel,
+		) => {
+			await AdminActionLogStore.log(this.persistence, this.read, {
+				userId: targetUser.id,
+				username: targetUser.username,
+				action: action,
+				adminUsername: admin.username,
+				timestamp: Date.now(),
+				previousLevel,
+				newLevel,
 			});
 		};
 
@@ -203,6 +397,7 @@ export class ViewSubmitHandler {
 					targetUser.username,
 					admin.username,
 				);
+				await logAction();
 				await notify(
 					AdminActionMessages.vouch(
 						targetUser.username,
@@ -217,6 +412,7 @@ export class ViewSubmitHandler {
 					this.persistence,
 					targetUser.id,
 				);
+				await logAction();
 				await notify(
 					AdminActionMessages.resetCooldown(
 						targetUser.username,
@@ -239,6 +435,7 @@ export class ViewSubmitHandler {
 					this.read,
 					targetUser.id,
 				);
+				await logAction(before?.spammingLevel, after?.spammingLevel);
 				const beforeLabel =
 					before?.spammingLevel !== undefined
 						? (SPAMMING_LEVEL_LABELS[before.spammingLevel] ??
@@ -266,6 +463,7 @@ export class ViewSubmitHandler {
 					this.persistence,
 					targetUser.id,
 				);
+				await logAction();
 				await notify(
 					AdminActionMessages.resetLevelClean(
 						targetUser.username,

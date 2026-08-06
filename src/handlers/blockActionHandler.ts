@@ -28,6 +28,10 @@ import { CONFIGURABLE_LEVELS, levelLabel } from '../definition/levelConfig';
 import { SpammingLevel } from '../definition/spamlevel';
 import { buildEditLevelModal } from '../modals/editLevelModal';
 import { buildLevelConfigOverviewModal } from '../modals/levelOverviewModal';
+import { ScheduleActionId } from '../enums/modals/scheduleReports';
+import { buildScheduleSetupModal } from '../modals/scheduleReportModal';
+import { ScheduleDraftStorage } from '../persistence/scheduleReports/scheduleDraftStore';
+import { ScheduleStore } from '../persistence/scheduleReports/scheduleStore';
 
 export class BlockActionHandler {
 	constructor(
@@ -114,7 +118,35 @@ export class BlockActionHandler {
 
 			return this.context.getInteractionResponder().successResponse();
 		}
+		if (actionId === ScheduleActionId.BACK) {
+			await ScheduleDraftStorage.clear(this.persistence, user.id);
+			const existing = await ScheduleStore.get(this.read);
+			const setupModal = buildScheduleSetupModal(this.appId, existing);
 
+			return this.context
+				.getInteractionResponder()
+				.updateModalViewResponse(setupModal);
+		}
+		if (actionId === ScheduleActionId.DELETE) {
+			const existing = await ScheduleStore.get(this.read);
+			if (!existing) {
+				return this.context.getInteractionResponder().successResponse();
+			}
+
+			await ScheduleDraftStorage.save(this.persistence, user.id, {
+				stage: 'delete',
+			});
+			const deleteModal = buildScheduleSetupModal(
+				this.appId,
+				existing,
+				null,
+				'delete',
+			);
+
+			return this.context
+				.getInteractionResponder()
+				.updateModalViewResponse(deleteModal);
+		}
 		if (actionId === ManageUserActionId.OPEN_MANAGE_MODAL) {
 			if (!value || !triggerId) {
 				return this.context.getInteractionResponder().successResponse();
