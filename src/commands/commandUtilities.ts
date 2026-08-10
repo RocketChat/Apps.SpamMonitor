@@ -108,6 +108,16 @@ export class SpamMonitorCommand implements ISlashCommand {
 				await handler.configureLevels(triggerId);
 				break;
 			}
+			case SpamMonitorParam.SCHEDULE: {
+				if (!triggerId) {
+					await handler.sendNotification(
+						slashNotifications.SCHEDULE_MISSING_TRIGGER,
+					);
+					return;
+				}
+				await handler.scheduleReport(triggerId);
+				break;
+			}
 
 			default:
 				await handler.sendNotification(slashCommandHelp.HELP);

@@ -22,7 +22,6 @@ import { ISetting } from '@rocket.chat/apps-engine/definition/settings';
 import {
 	IUIKitResponse,
 	UIKitBlockInteractionContext,
-	UIKitViewCloseInteractionContext,
 	UIKitViewSubmitInteractionContext,
 } from '@rocket.chat/apps-engine/definition/uikit';
 import { IUIKitInteractionHandler } from '@rocket.chat/apps-engine/definition/uikit/IUIKitActionHandler';
@@ -45,6 +44,12 @@ import {
 import { ViewSubmitHandler } from './src/handlers/viewSubmitHandler';
 import { BlockActionHandler } from './src/handlers/blockActionHandler';
 import { LevelConfigStore } from './src/persistence/levelConfigStore';
+import {
+	DAILY_REPORT_JOB_ID,
+	ScheduledReporter,
+} from './src/core/schedulereport';
+import { IJobContext } from '@rocket.chat/apps-engine/definition/scheduler';
+import { ScheduleStore } from './src/persistence/scheduleReports/scheduleStore';
 
 export class AppsSpamMonitorApp
 	extends App
@@ -79,13 +84,60 @@ export class AppsSpamMonitorApp
 		await configuration.slashCommands.provideSlashCommand(
 			new SpamMonitorCommand(this.getID()),
 		);
+
+		await configuration.scheduler.registerProcessors([
+			{
+				id: DAILY_REPORT_JOB_ID,
+				processor: async (
+					_jobContext: IJobContext,
+					read: IRead,
+					modify: IModify,
+					http: IHttp,
+					persis: IPersistence,
+				) => {
+					try {
+						await ScheduledReporter.sendDailyReport(
+							read,
+							modify,
+							http,
+							persis,
+							ADMIN_CHANNEL_NAME,
+						);
+					} catch (err) {
+						this.getLogger().error(
+							'[SpamMonitor] Scheduled report job failed:',
+							err,
+						);
+					}
+				},
+			},
+		]);
 	}
 
 	public async onEnable(
 		environment: IEnvironmentRead,
-		_configurationModify: IConfigurationModify,
+		configurationModify: IConfigurationModify,
 	): Promise<boolean> {
 		await this.loadSettings(environment);
+		try {
+			const read = this.getAccessors().reader;
+			const existing = await ScheduleStore.get(read);
+			if (existing) {
+				await configurationModify.scheduler
+					.cancelJob(DAILY_REPORT_JOB_ID)
+					.catch(() => {});
+				await configurationModify.scheduler.scheduleRecurring({
+					id: DAILY_REPORT_JOB_ID,
+					interval: existing.cronExpression,
+					skipImmediate: true,
+				});
+			}
+		} catch (err) {
+			this.getLogger().error(
+				'[SpamMonitor] Failed to re-arm schedule on enable:',
+				err,
+			);
+		}
 		return true;
 	}
 
@@ -267,7 +319,13 @@ export class AppsSpamMonitorApp
 	): Promise<void> {
 		if (!message.sender || !message.room) return;
 		const sender = await read.getUserReader().getById(message.sender.id);
-		if (!sender || !this.processor?.isNewUser(sender)) return;
+		const appUser = await read.getUserReader().getAppUser();
+		if (
+			!sender ||
+			sender.id === appUser?.id ||
+			!this.processor?.isNewUser(sender)
+		)
+			return;
 		try {
 			const result = await this.processor.analyzeMessage(
 				message,
@@ -282,10 +340,13 @@ export class AppsSpamMonitorApp
 				await RestrictionManager.applyAction(
 					read,
 					modify,
+					persistence,
 					sender,
 					result.record,
 					{
 						levelChanged: result.levelChanged,
+						trigger: result.trigger,
+						roomName: message.room.slugifiedName ?? message.room.id,
 					},
 					levelConfig,
 				);
