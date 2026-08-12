@@ -32,6 +32,8 @@ import { ScheduleActionId } from '../enums/modals/scheduleReports';
 import { buildScheduleSetupModal } from '../modals/scheduleReportModal';
 import { ScheduleDraftStorage } from '../persistence/scheduleReports/scheduleDraftStore';
 import { ScheduleStore } from '../persistence/scheduleReports/scheduleStore';
+import { buildWhitelistOverviewModal } from '../modals/whiteListModal';
+import { ConfigActionId } from '../definition/config';
 
 export class BlockActionHandler {
 	constructor(
@@ -92,6 +94,30 @@ export class BlockActionHandler {
 				.getUiController()
 				.openSurfaceView(overviewModal, { triggerId }, user);
 
+			return this.context.getInteractionResponder().successResponse();
+		}
+		if (actionId.startsWith(ConfigActionId.OPEN_ITEM_PREFIX)) {
+			if (!triggerId) {
+				return this.context.getInteractionResponder().errorResponse();
+			}
+
+			const entryId =
+				value ?? actionId.slice(ConfigActionId.OPEN_ITEM_PREFIX.length);
+
+			switch (entryId) {
+				case 'whitelist': {
+					const modal = await buildWhitelistOverviewModal(
+						this.read,
+						this.appId,
+					);
+					await this.modify
+						.getUiController()
+						.openSurfaceView(modal, { triggerId }, user);
+					break;
+				}
+				default:
+					break;
+			}
 			return this.context.getInteractionResponder().successResponse();
 		}
 		if (actionId.startsWith(OverviewActionId.EDIT_LEVEL_PREFIX)) {
