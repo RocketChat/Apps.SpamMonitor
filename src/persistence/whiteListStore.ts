@@ -64,9 +64,10 @@ export class WhitelistStore {
 		persistence: IPersistence,
 		roleId: string,
 	): Promise<WhitelistConfig> {
+		const normalized = roleId.toLowerCase();
 		const current = await this.get(read);
-		if (!current.roleIds.includes(roleId)) {
-			current.roleIds.push(roleId);
+		if (!current.roleIds.includes(normalized)) {
+			current.roleIds.push(normalized);
 			await this.save(persistence, current);
 		}
 		return current;
@@ -76,8 +77,9 @@ export class WhitelistStore {
 		persistence: IPersistence,
 		roleId: string,
 	): Promise<WhitelistConfig> {
+		const normalized = roleId.toLowerCase();
 		const current = await this.get(read);
-		current.roleIds = current.roleIds.filter((id) => id !== roleId);
+		current.roleIds = current.roleIds.filter((id) => id !== normalized);
 		await this.save(persistence, current);
 		return current;
 	}

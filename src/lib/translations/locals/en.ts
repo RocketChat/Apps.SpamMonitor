@@ -319,7 +319,7 @@ export const whitelistNotification = {
 		}
 		if (notFoundChannels.length > 0) {
 			parts.push(
-				`Could not find: ${notFoundChannels.map((c) => `#${c}`).join(', ')}. check the channel names for any uppercase letters.`,
+				`Could not find: ${notFoundChannels.map((c) => `#${c}`).join(', ')}. Check the channel names for any uppercase letters.`,
 			);
 		}
 		if (parts.length === 0) {
