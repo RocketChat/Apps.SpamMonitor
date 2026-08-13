@@ -39,6 +39,7 @@ export const AdminChannelMessages = {
 		`• \`manage <username>\` — Open admin controls for a flagged user\n` +
 		`• \`level\` — Configure action and notification per spam level\n\n` +
 		`• \`schedule\` — Configure schedule for scheduled spam reports\n\n` +
+		`• \`config\` — Configure spam monitor settings such as whitelisting channels and roles\n\n` +
 		`• \`help\` — Show this help message\n\n` +
 		`---\n\n` +
 		`**Configure Settings**\n` +
@@ -272,4 +273,63 @@ export const commonModalText = {
 export const scheduleValidationText = {
 	invalidTime: 'Enter a valid time as HH:MM, e.g. 09:00',
 	missingCustomDays: 'Select at least one day for Custom cadence.',
+};
+export const whitelistModalText = {
+	whitelistModalTitle: 'Spam Monitor Whitelist',
+	whitelistModalSubTitle:
+		'Channels and roles listed here are fully excluded from spam monitoring — no detection, no restrictions. Edit either list and hit Save; anything removed from a list gets un-whitelisted.',
+	channelListLabel: 'Whitelisted channels (comma-separated)',
+	roleListLabel: 'Whitelisted roles (comma-separated)',
+	channelListInputPlaceholder: 'general, random, support',
+	roleListInputPlaceholder: 'moderator, admin, support-team',
+	channelListInputHint:
+		'*Channel names are case-sensitive — enter them exactly as they appear in Rocket.Chat (e.g. "general", not "General").' +
+		'\n' +
+		'If you are unsure about the case of a channel name, check the channel list in Rocket.Chat.',
+};
+export const whitelistNotification = {
+	WhitelistUpdated: (
+		addedChannels: string[],
+		removedChannels: string[],
+		addedRoles: string[],
+		removedRoles: string[],
+		notFoundChannels: string[],
+	): string => {
+		const parts: string[] = [];
+
+		if (addedChannels.length > 0) {
+			parts.push(
+				`Added ${addedChannels.map((c) => `#${c}`).join(', ')} to the whitelist.`,
+			);
+		}
+		if (removedChannels.length > 0) {
+			parts.push(
+				`Removed ${removedChannels.map((c) => `#${c}`).join(', ')} from the whitelist.`,
+			);
+		}
+		if (addedRoles.length > 0) {
+			parts.push(
+				`Added role(s) ${addedRoles.map((r) => `\`${r}\``).join(', ')} to the whitelist.`,
+			);
+		}
+		if (removedRoles.length > 0) {
+			parts.push(
+				`Removed role(s) ${removedRoles.map((r) => `\`${r}\``).join(', ')} from the whitelist.`,
+			);
+		}
+		if (notFoundChannels.length > 0) {
+			parts.push(
+				`Could not find: ${notFoundChannels.map((c) => `#${c}`).join(', ')}. Check the channel names for any uppercase letters.`,
+			);
+		}
+		if (parts.length === 0) {
+			return 'Spam monitor whitelist saved — no changes.';
+		}
+		return `Spam monitor whitelist updated. ${parts.join(' ')}`;
+	},
+};
+export const configModalText = {
+	title: 'SpamMonitor Config',
+	header: 'Pick a section below to configure.',
+	configureButton: 'Configure',
 };

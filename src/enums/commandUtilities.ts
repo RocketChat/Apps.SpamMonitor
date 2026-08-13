@@ -6,4 +6,5 @@ export enum SpamMonitorParam {
 	MANAGE = 'manage',
 	LEVEL = 'level',
 	SCHEDULE = 'schedule',
+	CONFIG = 'config',
 }
