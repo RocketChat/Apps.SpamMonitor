@@ -5,9 +5,14 @@ import {
 import { WhitelistStore } from '../persistence/whiteListStore';
 import { WHITELIST_OVERVIEW_MODAL_ID } from '../enums/whitelist';
 import { UIKitSurfaceType } from '@rocket.chat/apps-engine/definition/uikit';
-import { TextObjectType } from '@rocket.chat/ui-kit';
+import {
+	ContextBlock,
+	SectionBlock,
+	TextObjectType,
+} from '@rocket.chat/ui-kit';
 import { BlockId } from '../enums/modals/whitelist';
 import { whitelistModalText } from '../lib/translations/locals/en';
+
 export async function buildWhitelistOverviewModal(
 	read: IRead,
 	appId: string,
@@ -19,6 +24,18 @@ export async function buildWhitelistOverviewModal(
 			return room?.slugifiedName ?? room?.displayName ?? id;
 		}),
 	);
+
+	const channelHintBlock: ContextBlock = {
+		type: 'context',
+		blockId: BlockId.WHITELIST_CHANNEL_HINT,
+		elements: [
+			{
+				type: TextObjectType.MRKDWN,
+				text: whitelistModalText.channelListInputHint,
+			},
+		],
+	};
+
 	return {
 		id: WHITELIST_OVERVIEW_MODAL_ID,
 		type: UIKitSurfaceType.MODAL,
@@ -64,16 +81,7 @@ export async function buildWhitelistOverviewModal(
 					},
 				},
 			},
-			{
-				type: 'context',
-				blockId: BlockId.WHITELIST_CHANNEL_HINT,
-				elements: [
-					{
-						type: TextObjectType.MRKDWN,
-						text: whitelistModalText.channelListInputHint,
-					},
-				],
-			} as any,
+			channelHintBlock,
 			{
 				type: 'input',
 				blockId: BlockId.WHITELIST_ROLE_INPUT,
@@ -98,9 +106,11 @@ export async function buildWhitelistOverviewModal(
 		],
 	};
 }
-function textSection(text: string) {
+
+function textSection(text: string): SectionBlock {
 	return { type: 'section', text: { type: TextObjectType.MRKDWN, text } };
 }
+
 export function parseWhitelistChannelListInput(
 	state: Record<string, Record<string, unknown>>,
 ): string[] {
@@ -109,6 +119,7 @@ export function parseWhitelistChannelListInput(
 	] as string | undefined;
 	return splitCommaList(raw).map((name) => name.replace(/^#/, ''));
 }
+
 export function parseWhitelistRoleListInput(
 	state: Record<string, Record<string, unknown>>,
 ): string[] {
@@ -117,6 +128,7 @@ export function parseWhitelistRoleListInput(
 		| undefined;
 	return splitCommaList(raw).map((r) => r.toLowerCase().replace(/\s+/g, '-'));
 }
+
 function splitCommaList(raw?: string): string[] {
 	if (!raw) return [];
 	return raw

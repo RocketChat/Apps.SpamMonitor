@@ -380,7 +380,8 @@ export class ViewSubmitHandler {
 		state: Record<string, Record<string, unknown>>,
 		user: IUser,
 	): Promise<IUIKitResponse> {
-		const { roomIds: currentRoomIds } = await WhitelistStore.get(this.read);
+		const { roomIds: currentRoomIds, roleIds: currentRoleIds } =
+			await WhitelistStore.get(this.read);
 		const currentLabels = await Promise.all(
 			currentRoomIds.map(async (id) => {
 				const room = await this.read.getRoomReader().getById(id);
@@ -415,7 +416,6 @@ export class ViewSubmitHandler {
 		for (const r of removedRooms) {
 			await WhitelistStore.removeRoom(this.read, this.persistence, r.id);
 		}
-		const { roleIds: currentRoleIds } = await WhitelistStore.get(this.read);
 		const newRoleIds = [...new Set(parseWhitelistRoleListInput(state))];
 		const addedRoles = newRoleIds.filter(
 			(r) => !currentRoleIds.includes(r),
