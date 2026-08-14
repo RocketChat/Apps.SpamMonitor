@@ -23,6 +23,7 @@ import { buildLevelConfigOverviewModal } from '../modals/levelOverviewModal';
 import { ScheduleStore } from '../persistence/scheduleReports/scheduleStore';
 import { buildScheduleSetupModal } from '../modals/scheduleReportModal';
 import { UIKitSurfaceType } from '@rocket.chat/apps-engine/definition/uikit';
+import { buildConfigOverviewModal } from '../modals/configOverviewModal';
 
 export class SpamMonitorHandler {
 	constructor(
@@ -266,6 +267,17 @@ export class SpamMonitorHandler {
 	public async scheduleReport(triggerId: string): Promise<void> {
 		const existing = await ScheduleStore.get(this.read);
 		const modal = buildScheduleSetupModal(this.appId, existing);
+		await this.modify
+			.getUiController()
+			.openSurfaceView(
+				{ ...modal, type: UIKitSurfaceType.MODAL },
+				{ triggerId },
+				this.sender,
+			);
+	}
+
+	public async openConfigModal(triggerId: string): Promise<void> {
+		const modal = buildConfigOverviewModal(this.appId);
 		await this.modify
 			.getUiController()
 			.openSurfaceView(
