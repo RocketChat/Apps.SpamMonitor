@@ -50,6 +50,7 @@ import {
 } from './src/core/schedulereport';
 import { IJobContext } from '@rocket.chat/apps-engine/definition/scheduler';
 import { ScheduleStore } from './src/persistence/scheduleReports/scheduleStore';
+import { WhitelistStore } from './src/persistence/whiteListStore';
 
 export class AppsSpamMonitorApp
 	extends App
@@ -287,6 +288,14 @@ export class AppsSpamMonitorApp
 		persistence: IPersistence,
 	): Promise<boolean> {
 		if (!message.sender || !message.room) return false;
+		if (await WhitelistStore.isRoomWhitelisted(read, message.room.id)) {
+			return false;
+		}
+		if (
+			await WhitelistStore.isUserWhitelistedByRole(read, message.sender)
+		) {
+			return false;
+		}
 		try {
 			const { restricted } = await UserStatusStore.isRestricted(
 				read,
@@ -327,6 +336,12 @@ export class AppsSpamMonitorApp
 		)
 			return;
 		try {
+			if (await WhitelistStore.isRoomWhitelisted(read, message.room.id)) {
+				return;
+			}
+			if (await WhitelistStore.isUserWhitelistedByRole(read, sender)) {
+				return;
+			}
 			const result = await this.processor.analyzeMessage(
 				message,
 				read,
