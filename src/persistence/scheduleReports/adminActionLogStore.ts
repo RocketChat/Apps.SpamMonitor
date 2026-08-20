@@ -14,12 +14,13 @@ import {
 	DAY_RECORD_RETENTION_DAYS,
 	MAX_REPORT_WINDOW_DAYS,
 } from '../../constants/scheduleLogStore';
+import { serialize } from '../../core/cache/keyedQueue';
+import { ADMIN_ACTION_DAY_INDEX_LOCK_KEY } from '../../constants/serialiseCacheLockKeys';
 
 export class AdminActionLogStore {
 	private static dayKey(timestamp: number): string {
 		return new Date(timestamp).toISOString().slice(0, 10);
 	}
-
 	private static lastPrunedDay: string | null = null;
 	private static recentActionsAssocs(
 		userId: string,
@@ -71,47 +72,51 @@ export class AdminActionLogStore {
 		read: IRead,
 		entry: AdminActionLogEntry,
 	): Promise<void> {
-		const day = AdminActionLogStore.dayKey(entry.timestamp);
+		await serialize(entry.userId, async () => {
+			const day = AdminActionLogStore.dayKey(entry.timestamp);
 
-		const dailyAssocs = AdminActionLogStore.dailyActionAssocs(
-			entry.userId,
-			day,
-		);
-		const existingDaily = await read
-			.getPersistenceReader()
-			.readByAssociations(dailyAssocs);
-		const dailyDoc = existingDaily.length
-			? (existingDaily[0] as {
-					entries: AdminActionLogEntry[];
-					truncated?: boolean;
-				})
-			: { entries: [], truncated: false };
+			const dailyAssocs = AdminActionLogStore.dailyActionAssocs(
+				entry.userId,
+				day,
+			);
+			const existingDaily = await read
+				.getPersistenceReader()
+				.readByAssociations(dailyAssocs);
+			const dailyDoc = existingDaily.length
+				? (existingDaily[0] as {
+						entries: AdminActionLogEntry[];
+						truncated?: boolean;
+					})
+				: { entries: [], truncated: false };
 
-		if (dailyDoc.entries.length < MAX_DAILY_ACTIONS) {
-			dailyDoc.entries.push(entry);
-		} else {
-			dailyDoc.truncated = true;
-		}
+			if (dailyDoc.entries.length < MAX_DAILY_ACTIONS) {
+				dailyDoc.entries.push(entry);
+			} else {
+				dailyDoc.truncated = true;
+			}
 
-		await persistence.updateByAssociations(dailyAssocs, dailyDoc, true);
-		if (day !== AdminActionLogStore.lastPrunedDay) {
+			await persistence.updateByAssociations(dailyAssocs, dailyDoc, true);
 			await AdminActionLogStore.pruneOldDays(persistence, read, day);
-			AdminActionLogStore.lastPrunedDay = day;
-		}
-		const recentAssocs = AdminActionLogStore.recentActionsAssocs(
-			entry.userId,
-		);
-		const existingRecent = await read
-			.getPersistenceReader()
-			.readByAssociations(recentAssocs);
-		const recentDoc = existingRecent.length
-			? (existingRecent[0] as { entries: AdminActionLogEntry[] })
-			: { entries: [] };
-		recentDoc.entries.push(entry);
-		while (recentDoc.entries.length > MAX_RECENT_ACTIONS) {
-			recentDoc.entries.shift();
-		}
-		await persistence.updateByAssociations(recentAssocs, recentDoc, true);
+
+			const recentAssocs = AdminActionLogStore.recentActionsAssocs(
+				entry.userId,
+			);
+			const existingRecent = await read
+				.getPersistenceReader()
+				.readByAssociations(recentAssocs);
+			const recentDoc = existingRecent.length
+				? (existingRecent[0] as { entries: AdminActionLogEntry[] })
+				: { entries: [] };
+			recentDoc.entries.push(entry);
+			while (recentDoc.entries.length > MAX_RECENT_ACTIONS) {
+				recentDoc.entries.shift();
+			}
+			await persistence.updateByAssociations(
+				recentAssocs,
+				recentDoc,
+				true,
+			);
+		});
 	}
 
 	public static async getByUser(
@@ -170,34 +175,42 @@ export class AdminActionLogStore {
 		read: IRead,
 		day: string,
 	): Promise<void> {
-		const indexAssoc = AdminActionLogStore.dayIndexAssoc();
-		const existingIndex = await read
-			.getPersistenceReader()
-			.readByAssociation(indexAssoc);
-		const indexDoc = existingIndex.length
-			? (existingIndex[0] as { days: string[] })
-			: { days: [] };
+		await serialize(ADMIN_ACTION_DAY_INDEX_LOCK_KEY, async () => {
+			if (day === AdminActionLogStore.lastPrunedDay) return;
+			const indexAssoc = AdminActionLogStore.dayIndexAssoc();
+			const existingIndex = await read
+				.getPersistenceReader()
+				.readByAssociation(indexAssoc);
+			const indexDoc = existingIndex.length
+				? (existingIndex[0] as { days: string[] })
+				: { days: [] };
 
-		if (!indexDoc.days.includes(day)) {
-			indexDoc.days.push(day);
-		}
+			if (!indexDoc.days.includes(day)) {
+				indexDoc.days.push(day);
+			}
 
-		const cutoff = new Date();
-		cutoff.setUTCDate(cutoff.getUTCDate() - DAY_RECORD_RETENTION_DAYS);
-		const cutoffKey = cutoff.toISOString().slice(0, 10);
+			const cutoff = new Date();
+			cutoff.setUTCDate(cutoff.getUTCDate() - DAY_RECORD_RETENTION_DAYS);
+			const cutoffKey = cutoff.toISOString().slice(0, 10);
 
-		const staleDays = indexDoc.days.filter((d) => d < cutoffKey);
-		if (staleDays.length) {
-			await Promise.all(
-				staleDays.map((staleDay) =>
-					persistence.removeByAssociation(
-						AdminActionLogStore.dailyActionScopeAssoc(staleDay),
+			const staleDays = indexDoc.days.filter((d) => d < cutoffKey);
+			if (staleDays.length) {
+				await Promise.all(
+					staleDays.map((staleDay) =>
+						persistence.removeByAssociation(
+							AdminActionLogStore.dailyActionScopeAssoc(staleDay),
+						),
 					),
-				),
-			);
-			indexDoc.days = indexDoc.days.filter((d) => d >= cutoffKey);
-		}
+				);
+				indexDoc.days = indexDoc.days.filter((d) => d >= cutoffKey);
+			}
 
-		await persistence.updateByAssociations([indexAssoc], indexDoc, true);
+			await persistence.updateByAssociations(
+				[indexAssoc],
+				indexDoc,
+				true,
+			);
+			AdminActionLogStore.lastPrunedDay = day;
+		});
 	}
 }

@@ -17,12 +17,13 @@ import {
 	MAX_REPORT_WINDOW_DAYS,
 	DAY_RECORD_RETENTION_DAYS,
 } from '../../constants/scheduleLogStore';
+import { serialize } from '../../core/cache/keyedQueue';
+import { FLAG_DAY_INDEX_LOCK_KEY } from '../../constants/serialiseCacheLockKeys';
 
 export class FlagLogStore {
 	private static dayKey(timestamp: number): string {
 		return new Date(timestamp).toISOString().slice(0, 10);
 	}
-
 	private static lastPrunedDay: string | null = null;
 	private static dailySummaryAssocs(
 		userId: string,
@@ -74,64 +75,71 @@ export class FlagLogStore {
 		read: IRead,
 		entry: FlagLogEntry,
 	): Promise<void> {
-		const day = FlagLogStore.dayKey(entry.timestamp);
-		const summaryAssocs = FlagLogStore.dailySummaryAssocs(
-			entry.userId,
-			day,
-		);
-		const existingSummaries = await read
-			.getPersistenceReader()
-			.readByAssociations(summaryAssocs);
-		const existing = existingSummaries.length
-			? (existingSummaries[0] as DailyFlagSummary)
-			: null;
-		const summary: DailyFlagSummary = existing
-			? {
-					...existing,
-					flagCount: existing.flagCount + 1,
-					triggers: {
-						...existing.triggers,
-						[entry.trigger]:
-							(existing.triggers[entry.trigger] || 0) + 1,
-					},
-					actions: {
-						...existing.actions,
-						[entry.action]:
-							(existing.actions[entry.action] || 0) + 1,
-					},
-					rooms: existing.rooms.includes(entry.roomName)
-						? existing.rooms
-						: existing.rooms.length < MAX_ROOMS_PER_SUMMARY
-							? [...existing.rooms, entry.roomName]
-							: existing.rooms,
-				}
-			: {
-					userId: entry.userId,
-					username: entry.username,
-					date: day,
-					flagCount: 1,
-					triggers: { [entry.trigger]: 1 },
-					actions: { [entry.action]: 1 },
-					rooms: [entry.roomName],
-				};
-		await persistence.updateByAssociations(summaryAssocs, summary, true);
-		if (day !== FlagLogStore.lastPrunedDay) {
+		await serialize(entry.userId, async () => {
+			const day = FlagLogStore.dayKey(entry.timestamp);
+			const summaryAssocs = FlagLogStore.dailySummaryAssocs(
+				entry.userId,
+				day,
+			);
+			const existingSummaries = await read
+				.getPersistenceReader()
+				.readByAssociations(summaryAssocs);
+			const existing = existingSummaries.length
+				? (existingSummaries[0] as DailyFlagSummary)
+				: null;
+			const summary: DailyFlagSummary = existing
+				? {
+						...existing,
+						flagCount: existing.flagCount + 1,
+						triggers: {
+							...existing.triggers,
+							[entry.trigger]:
+								(existing.triggers[entry.trigger] || 0) + 1,
+						},
+						actions: {
+							...existing.actions,
+							[entry.action]:
+								(existing.actions[entry.action] || 0) + 1,
+						},
+						rooms: existing.rooms.includes(entry.roomName)
+							? existing.rooms
+							: existing.rooms.length < MAX_ROOMS_PER_SUMMARY
+								? [...existing.rooms, entry.roomName]
+								: existing.rooms,
+					}
+				: {
+						userId: entry.userId,
+						username: entry.username,
+						date: day,
+						flagCount: 1,
+						triggers: { [entry.trigger]: 1 },
+						actions: { [entry.action]: 1 },
+						rooms: [entry.roomName],
+					};
+			await persistence.updateByAssociations(
+				summaryAssocs,
+				summary,
+				true,
+			);
 			await FlagLogStore.pruneOldDays(persistence, read, day);
-			FlagLogStore.lastPrunedDay = day;
-		}
 
-		const recentAssocs = FlagLogStore.recentEventsAssocs(entry.userId);
-		const existingRecent = await read
-			.getPersistenceReader()
-			.readByAssociations(recentAssocs);
-		const recentDoc = existingRecent.length
-			? (existingRecent[0] as { entries: FlagLogEntry[] })
-			: { entries: [] };
-		recentDoc.entries.push(entry);
-		while (recentDoc.entries.length > MAX_RECENT_EVENTS) {
-			recentDoc.entries.shift();
-		}
-		await persistence.updateByAssociations(recentAssocs, recentDoc, true);
+			const recentAssocs = FlagLogStore.recentEventsAssocs(entry.userId);
+			const existingRecent = await read
+				.getPersistenceReader()
+				.readByAssociations(recentAssocs);
+			const recentDoc = existingRecent.length
+				? (existingRecent[0] as { entries: FlagLogEntry[] })
+				: { entries: [] };
+			recentDoc.entries.push(entry);
+			while (recentDoc.entries.length > MAX_RECENT_EVENTS) {
+				recentDoc.entries.shift();
+			}
+			await persistence.updateByAssociations(
+				recentAssocs,
+				recentDoc,
+				true,
+			);
+		});
 	}
 
 	public static async getDailySummariesSince(
@@ -168,34 +176,42 @@ export class FlagLogStore {
 		read: IRead,
 		day: string,
 	): Promise<void> {
-		const indexAssoc = FlagLogStore.dayIndexAssoc();
-		const existingIndex = await read
-			.getPersistenceReader()
-			.readByAssociation(indexAssoc);
-		const indexDoc = existingIndex.length
-			? (existingIndex[0] as { days: string[] })
-			: { days: [] };
+		await serialize(FLAG_DAY_INDEX_LOCK_KEY, async () => {
+			if (day === FlagLogStore.lastPrunedDay) return;
+			const indexAssoc = FlagLogStore.dayIndexAssoc();
+			const existingIndex = await read
+				.getPersistenceReader()
+				.readByAssociation(indexAssoc);
+			const indexDoc = existingIndex.length
+				? (existingIndex[0] as { days: string[] })
+				: { days: [] };
 
-		if (!indexDoc.days.includes(day)) {
-			indexDoc.days.push(day);
-		}
+			if (!indexDoc.days.includes(day)) {
+				indexDoc.days.push(day);
+			}
 
-		const cutoff = new Date();
-		cutoff.setUTCDate(cutoff.getUTCDate() - DAY_RECORD_RETENTION_DAYS);
-		const cutoffKey = cutoff.toISOString().slice(0, 10);
+			const cutoff = new Date();
+			cutoff.setUTCDate(cutoff.getUTCDate() - DAY_RECORD_RETENTION_DAYS);
+			const cutoffKey = cutoff.toISOString().slice(0, 10);
 
-		const staleDays = indexDoc.days.filter((d) => d < cutoffKey);
-		if (staleDays.length) {
-			await Promise.all(
-				staleDays.map((staleDay) =>
-					persistence.removeByAssociation(
-						FlagLogStore.dailyScopeAssoc(staleDay),
+			const staleDays = indexDoc.days.filter((d) => d < cutoffKey);
+			if (staleDays.length) {
+				await Promise.all(
+					staleDays.map((staleDay) =>
+						persistence.removeByAssociation(
+							FlagLogStore.dailyScopeAssoc(staleDay),
+						),
 					),
-				),
-			);
-			indexDoc.days = indexDoc.days.filter((d) => d >= cutoffKey);
-		}
+				);
+				indexDoc.days = indexDoc.days.filter((d) => d >= cutoffKey);
+			}
 
-		await persistence.updateByAssociations([indexAssoc], indexDoc, true);
+			await persistence.updateByAssociations(
+				[indexAssoc],
+				indexDoc,
+				true,
+			);
+			FlagLogStore.lastPrunedDay = day;
+		});
 	}
 }
