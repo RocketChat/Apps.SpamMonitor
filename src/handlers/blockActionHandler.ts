@@ -34,6 +34,10 @@ import { ScheduleDraftStorage } from '../persistence/scheduleReports/scheduleDra
 import { ScheduleStore } from '../persistence/scheduleReports/scheduleStore';
 import { buildWhitelistOverviewModal } from '../modals/whiteListModal';
 import { ConfigActionId } from '../definition/config';
+import { buildLanguageSelectModal } from '../modals/setLanguage';
+import { LanguagePreferenceStorage } from '../persistence/languagePreferenceStorage';
+import { getTranslations } from '../lib/translations';
+import { Translations } from '../definition/languagepreference';
 
 export class BlockActionHandler {
 	constructor(
@@ -44,10 +48,23 @@ export class BlockActionHandler {
 		private readonly context: UIKitBlockInteractionContext,
 		private readonly appId: string,
 	) {}
-
+	private cachedTranslations: Translations | undefined;
+	private async getT(): Promise<Translations> {
+		if (this.cachedTranslations) return this.cachedTranslations;
+		const { user } = this.context.getInteractionData();
+		const langStore = new LanguagePreferenceStorage(
+			this.persistence,
+			this.read.getPersistenceReader(),
+			user.id,
+		);
+		const lang = await langStore.getLanguage();
+		this.cachedTranslations = getTranslations(lang);
+		return this.cachedTranslations;
+	}
 	public async handle(): Promise<IUIKitResponse> {
 		const { actionId, value, user, triggerId } =
 			this.context.getInteractionData();
+		const t = await this.getT();
 		const roomStorage = new RoomInteractionStorage(
 			this.persistence,
 			this.read.getPersistenceReader(),
@@ -71,6 +88,7 @@ export class BlockActionHandler {
 				level,
 				levelLabel(level),
 				this.appId,
+				t,
 				roomId ?? undefined,
 			);
 
@@ -88,6 +106,7 @@ export class BlockActionHandler {
 			const overviewModal = await buildLevelConfigOverviewModal(
 				this.read,
 				this.appId,
+				t,
 			);
 
 			await this.modify
@@ -109,6 +128,20 @@ export class BlockActionHandler {
 					const modal = await buildWhitelistOverviewModal(
 						this.read,
 						this.appId,
+						t,
+					);
+					await this.modify
+						.getUiController()
+						.openSurfaceView(modal, { triggerId }, user);
+					break;
+				}
+				case 'language': {
+					const modal = await buildLanguageSelectModal(
+						this.read.getPersistenceReader(),
+						this.persistence,
+						this.appId,
+						user.id,
+						t,
 					);
 					await this.modify
 						.getUiController()
@@ -136,6 +169,7 @@ export class BlockActionHandler {
 				this.read,
 				this.appId,
 				level,
+				t,
 			);
 
 			await this.modify
@@ -147,7 +181,7 @@ export class BlockActionHandler {
 		if (actionId === ScheduleActionId.BACK) {
 			await ScheduleDraftStorage.clear(this.persistence, user.id);
 			const existing = await ScheduleStore.get(this.read);
-			const setupModal = buildScheduleSetupModal(this.appId, existing);
+			const setupModal = buildScheduleSetupModal(this.appId, t, existing);
 
 			return this.context
 				.getInteractionResponder()
@@ -164,6 +198,7 @@ export class BlockActionHandler {
 			});
 			const deleteModal = buildScheduleSetupModal(
 				this.appId,
+				t,
 				existing,
 				null,
 				'delete',
@@ -197,7 +232,7 @@ export class BlockActionHandler {
 						.successResponse();
 				}
 
-				const modal = buildManageUserModal(record, this.appId);
+				const modal = buildManageUserModal(record, this.appId, t);
 				await this.modify
 					.getUiController()
 					.openSurfaceView(modal, { triggerId }, user);
@@ -232,6 +267,7 @@ export class BlockActionHandler {
 			targetUser.id,
 			targetUser.username,
 			this.appId,
+			t,
 			roomId,
 		);
 		await this.modify
