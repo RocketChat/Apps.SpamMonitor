@@ -11,15 +11,13 @@ export enum ConfigBlockId {
 	CLOSE_BTN = 'config_close_btn',
 }
 
+export type ConfigEntryId = 'whitelist' | 'language';
+
 export interface ConfigEntry {
-	id: string;
-	label: string;
-	description: string;
+	id: ConfigEntryId;
 }
+
 export const CONFIG_ENTRIES: ConfigEntry[] = [
-	{
-		id: 'whitelist',
-		label: 'Whitelist',
-		description: 'Channels and roles fully excluded from spam monitoring.',
-	},
+	{ id: 'whitelist' },
+	{ id: 'language' },
 ];
