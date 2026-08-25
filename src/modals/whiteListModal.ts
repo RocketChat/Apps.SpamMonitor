@@ -11,11 +11,12 @@ import {
 	TextObjectType,
 } from '@rocket.chat/ui-kit';
 import { BlockId } from '../enums/modals/whitelist';
-import { whitelistModalText } from '../lib/translations/locals/en';
+import { Translations } from '../definition/languagepreference';
 
 export async function buildWhitelistOverviewModal(
 	read: IRead,
 	appId: string,
+	t: Translations,
 ): Promise<IUIKitSurfaceViewParam> {
 	const { roomIds, roleIds } = await WhitelistStore.get(read);
 	const roomLabels = await Promise.all(
@@ -31,7 +32,7 @@ export async function buildWhitelistOverviewModal(
 		elements: [
 			{
 				type: TextObjectType.MRKDWN,
-				text: whitelistModalText.channelListInputHint,
+				text: t.whitelistModalText.channelListInputHint,
 			},
 		],
 	};
@@ -41,24 +42,30 @@ export async function buildWhitelistOverviewModal(
 		type: UIKitSurfaceType.MODAL,
 		title: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: whitelistModalText.whitelistModalTitle,
+			text: t.whitelistModalText.whitelistModalTitle,
 		},
 		submit: {
 			type: 'button',
 			appId,
 			blockId: BlockId.WHITELIST_SAVE,
 			actionId: 'whitelist_save',
-			text: { type: TextObjectType.PLAIN_TEXT, text: 'Save' },
+			text: {
+				type: TextObjectType.PLAIN_TEXT,
+				text: t.commonModalText.save,
+			},
 		},
 		close: {
 			type: 'button',
 			appId,
 			blockId: BlockId.WHITELIST_CLOSE,
 			actionId: 'whitelist_close',
-			text: { type: TextObjectType.PLAIN_TEXT, text: 'Cancel' },
+			text: {
+				type: TextObjectType.PLAIN_TEXT,
+				text: t.commonModalText.cancel,
+			},
 		},
 		blocks: [
-			textSection(whitelistModalText.whitelistModalSubTitle),
+			textSection(t.whitelistModalText.whitelistModalSubTitle),
 			{ type: 'divider' },
 			{
 				type: 'input',
@@ -66,7 +73,7 @@ export async function buildWhitelistOverviewModal(
 				optional: true,
 				label: {
 					type: TextObjectType.PLAIN_TEXT,
-					text: whitelistModalText.channelListLabel,
+					text: t.whitelistModalText.channelListLabel,
 				},
 				element: {
 					type: 'plain_text_input',
@@ -77,7 +84,7 @@ export async function buildWhitelistOverviewModal(
 					initialValue: roomLabels.join(', '),
 					placeholder: {
 						type: TextObjectType.PLAIN_TEXT,
-						text: whitelistModalText.channelListInputPlaceholder,
+						text: t.whitelistModalText.channelListInputPlaceholder,
 					},
 				},
 			},
@@ -88,7 +95,7 @@ export async function buildWhitelistOverviewModal(
 				optional: true,
 				label: {
 					type: TextObjectType.PLAIN_TEXT,
-					text: whitelistModalText.roleListLabel,
+					text: t.whitelistModalText.roleListLabel,
 				},
 				element: {
 					type: 'plain_text_input',
@@ -99,7 +106,7 @@ export async function buildWhitelistOverviewModal(
 					initialValue: roleIds.join(', '),
 					placeholder: {
 						type: TextObjectType.PLAIN_TEXT,
-						text: whitelistModalText.roleListInputPlaceholder,
+						text: t.whitelistModalText.roleListInputPlaceholder,
 					},
 				},
 			},

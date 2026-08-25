@@ -10,7 +10,7 @@ import {
 	TextObjectType,
 } from '@rocket.chat/ui-kit';
 
-import { configModalText } from '../lib/translations/locals/en';
+import { Translations } from '../definition/languagepreference';
 import {
 	CONFIG_ENTRIES,
 	CONFIG_OVERVIEW_MODAL_ID,
@@ -20,12 +20,13 @@ import {
 
 export function buildConfigOverviewModal(
 	appId: string,
+	t: Translations,
 ): IUIKitSurfaceViewParam {
 	const headerBlock: SectionBlock = {
 		type: 'section',
 		text: {
 			type: TextObjectType.MRKDWN,
-			text: configModalText.header,
+			text: t.configModalText.header,
 		},
 	};
 
@@ -33,12 +34,13 @@ export function buildConfigOverviewModal(
 
 	const rowBlocks = CONFIG_ENTRIES.reduce<Array<SectionBlock | DividerBlock>>(
 		(acc, entry) => {
+			const { label, description } = t.configEntriesText[entry.id];
 			const sectionBlock: SectionBlock = {
 				type: 'section',
 				blockId: `${ConfigBlockId.ITEM_ROW_PREFIX}${entry.id}`,
 				text: {
 					type: TextObjectType.MRKDWN,
-					text: `*${entry.label}*\n${entry.description}`,
+					text: `*${label}*\n${description}`,
 				},
 				accessory: {
 					type: 'button',
@@ -48,7 +50,7 @@ export function buildConfigOverviewModal(
 					actionId: `${ConfigActionId.OPEN_ITEM_PREFIX}${entry.id}`,
 					text: {
 						type: TextObjectType.PLAIN_TEXT,
-						text: configModalText.configureButton,
+						text: t.configModalText.configureButton,
 						emoji: true,
 					},
 					value: entry.id,
@@ -66,7 +68,7 @@ export function buildConfigOverviewModal(
 		type: UIKitSurfaceType.MODAL,
 		title: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: configModalText.title,
+			text: t.configModalText.title,
 			emoji: true,
 		},
 		blocks: [headerBlock, topDivider, ...rowBlocks],
@@ -75,7 +77,10 @@ export function buildConfigOverviewModal(
 			appId,
 			blockId: ConfigBlockId.CLOSE_BTN,
 			actionId: ConfigActionId.CLOSE,
-			text: { type: TextObjectType.PLAIN_TEXT, text: 'Close' },
+			text: {
+				type: TextObjectType.PLAIN_TEXT,
+				text: t.commonModalText.cancel,
+			},
 		},
 	};
 }

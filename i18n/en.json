@@ -9,5 +9,6 @@
     "antispam_setting_rate_short_burst_description": "Number of messages allowed per user in a short 30-second burst (default: 5)",
     "antispam_setting_rate_sustained_label": "Rate Limit — Sustained (2 min)",
     "antispam_setting_rate_sustained_description": "Number of messages allowed per user over a sustained 2-minute window (default: 12)",
-    "SpamMonitor_Command_Description": "Spam monitor slash command (admin only)"
+    "SpamMonitor_Command_Description": "Spam monitor slash command (admin only)",
+    "SpamMonitor_Command_ParamsExample": "list all | list timeout | list <Level> | manage <username> | level | config "
 }

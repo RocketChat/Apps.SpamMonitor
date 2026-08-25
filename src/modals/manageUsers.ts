@@ -18,14 +18,19 @@ import {
 	BlockId,
 } from '../enums/modals/manageUsers';
 import { formatCooldown, formatDate } from '../lib/utils/messageUtils';
-import { ConfirmActionMeta } from '../lib/translations/locals/en';
+import { Translations } from '../definition/languagepreference';
 
 // Falls back to a plain label if an action is ever missing from ConfirmActionMeta
-function buttonLabel(action: ManageUserActionId, fallback: string): string {
-	return ConfirmActionMeta[action]?.confirmLabel ?? fallback;
+function buttonLabel(
+	t: Translations,
+	action: ManageUserActionId,
+	fallback: string,
+): string {
+	return t.ConfirmActionMeta[action]?.confirmLabel ?? fallback;
 }
 
 function buildActionButton(
+	t: Translations,
 	appId: string,
 	confirmActionId: ManageUserActionId,
 	labelAction: ManageUserActionId,
@@ -40,7 +45,7 @@ function buildActionButton(
 		actionId: confirmActionId,
 		text: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: buttonLabel(labelAction, fallbackLabel),
+			text: buttonLabel(t, labelAction, fallbackLabel),
 		},
 		value: userId,
 		...(style ? { style } : {}),
@@ -50,6 +55,7 @@ function buildActionButton(
 export function buildManageUserModal(
 	record: UserSpamRecord,
 	appId: string,
+	t: Translations,
 ): IUIKitSurfaceViewParam {
 	const levelLabel =
 		SPAMMING_LEVEL_LABELS[record.spammingLevel] ??
@@ -63,7 +69,7 @@ export function buildManageUserModal(
 		blockId: BlockId.USER_INFO,
 		text: {
 			type: TextObjectType.MRKDWN,
-			text: `*User:* @${record.username}`,
+			text: t.ManageUserModalStrings.userLabel(record.username),
 		},
 	};
 
@@ -73,15 +79,19 @@ export function buildManageUserModal(
 		fields: [
 			{
 				type: TextObjectType.MRKDWN,
-				text: `*Spam Level:*\n${levelLabel}`,
+				text: t.ManageUserModalStrings.spamLevelFieldLabel(levelLabel),
 			},
 			{
 				type: TextObjectType.MRKDWN,
-				text: `*Cooldown:*\n${formatCooldown(record.cooldownUntil)}`,
+				text: t.ManageUserModalStrings.cooldownFieldLabel(
+					formatCooldown(record.cooldownUntil),
+				),
 			},
 			{
 				type: TextObjectType.MRKDWN,
-				text: `*Last Escalation:*\n${formatDate(record.lastEscalation)}`,
+				text: t.ManageUserModalStrings.lastEscalationFieldLabel(
+					formatDate(record.lastEscalation),
+				),
 			},
 		],
 	};
@@ -96,26 +106,28 @@ export function buildManageUserModal(
 		blockId: BlockId.ACTIONS_HEADER,
 		text: {
 			type: TextObjectType.MRKDWN,
-			text: '*Admin Actions*',
+			text: t.ManageUserModalStrings.actionsHeader,
 		},
 	};
 
 	const actionButtons: ButtonElement[] = [
 		buildActionButton(
+			t,
 			appId,
 			ManageUserActionId.CONFIRM_VOUCH,
 			ManageUserActionId.VOUCH,
-			'Vouch',
+			t.ManageUserModalStrings.vouchButtonFallback,
 			record.userId,
 			'primary',
 		),
 		...(isOnCooldown
 			? [
 					buildActionButton(
+						t,
 						appId,
 						ManageUserActionId.CONFIRM_RESET_COOLDOWN,
 						ManageUserActionId.RESET_COOLDOWN,
-						'Reset Cooldown',
+						t.ManageUserModalStrings.resetCooldownButtonFallback,
 						record.userId,
 					),
 				]
@@ -123,17 +135,19 @@ export function buildManageUserModal(
 		...(!isClean
 			? [
 					buildActionButton(
+						t,
 						appId,
 						ManageUserActionId.CONFIRM_RESET_LEVEL_DOWN,
 						ManageUserActionId.RESET_LEVEL_DOWN,
-						'Level Down',
+						t.ManageUserModalStrings.levelDownButtonFallback,
 						record.userId,
 					),
 					buildActionButton(
+						t,
 						appId,
 						ManageUserActionId.CONFIRM_RESET_LEVEL_CLEAN,
 						ManageUserActionId.RESET_LEVEL_CLEAN,
-						'Reset to Clean',
+						t.ManageUserModalStrings.resetToCleanButtonFallback,
 						record.userId,
 						'danger',
 					),
@@ -160,7 +174,7 @@ export function buildManageUserModal(
 		type: UIKitSurfaceType.MODAL,
 		title: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: `Manage @${record.username}`,
+			text: t.ManageUserModalStrings.modalTitle(record.username),
 		},
 		blocks,
 		close: {
@@ -169,7 +183,10 @@ export function buildManageUserModal(
 			blockId: BlockId.CLOSE,
 			actionId: 'manage_user_close_action',
 			style: 'danger',
-			text: { type: TextObjectType.PLAIN_TEXT, text: 'Close' },
+			text: {
+				type: TextObjectType.PLAIN_TEXT,
+				text: t.commonModalText.cancel,
+			},
 		},
 	};
 }

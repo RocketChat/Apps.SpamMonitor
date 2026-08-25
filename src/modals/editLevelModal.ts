@@ -27,20 +27,21 @@ import {
 	EditLevelActionId,
 	EditLevelBlockId,
 } from '../enums/modals/levelConfig';
-import { LevelConfigStrings } from '../lib/translations/locals/en';
+import { Translations } from '../definition/languagepreference';
 import { LevelConfigDiff } from '../definition/editmodal';
 
 export async function buildEditLevelModal(
 	read: IRead,
 	appId: string,
 	level: SpammingLevel,
+	t: Translations,
 ): Promise<IUIKitSurfaceViewParam> {
 	const config = await LevelConfigStore.get(read, level);
 	const defaults = DEFAULT_LEVEL_CONFIGS[level];
 	const defaultTimeout = defaults.timeoutSeconds ?? 60;
 	const initialTimeout = config.timeoutSeconds ?? defaultTimeout;
 	const initialPlaceholderMessage =
-		LevelConfigStrings.defaultNotificationInputPlaceholder;
+		t.LevelConfigStrings.defaultNotificationInputPlaceholder;
 
 	const allowed = actionOptionsFor(level);
 	const initialAction: LevelActionType = allowed.includes(config.action)
@@ -52,8 +53,9 @@ export async function buildEditLevelModal(
 		text: {
 			type: TextObjectType.MRKDWN,
 			text:
-				`*Editing: ${levelLabel(level)}*\n` +
-				LevelConfigStrings.headerText,
+				t.EditLevelModalStrings.headerTitle(levelLabel(level)) +
+				'\n' +
+				t.LevelConfigStrings.headerText,
 		},
 	};
 
@@ -70,7 +72,7 @@ export async function buildEditLevelModal(
 				actionId: EditLevelActionId.BACK_TO_OVERVIEW,
 				text: {
 					type: TextObjectType.PLAIN_TEXT,
-					text: '← Back to Overview',
+					text: t.EditLevelModalStrings.backToOverviewButton,
 					emoji: true,
 				},
 				value: String(level),
@@ -82,7 +84,7 @@ export async function buildEditLevelModal(
 				actionId: `${EditLevelActionId.RESET_TO_DEFAULT}_${level}`,
 				text: {
 					type: TextObjectType.PLAIN_TEXT,
-					text: 'Reset to Defaults',
+					text: t.EditLevelModalStrings.resetToDefaultButton,
 					emoji: true,
 				},
 				value: String(level),
@@ -95,7 +97,7 @@ export async function buildEditLevelModal(
 		blockId: EditLevelBlockId.ACTION_SELECT,
 		label: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: 'Action',
+			text: t.EditLevelModalStrings.actionSelectLabel,
 			emoji: true,
 		},
 		element: {
@@ -105,7 +107,7 @@ export async function buildEditLevelModal(
 			actionId: EditLevelActionId.ACTION_SELECT,
 			placeholder: {
 				type: TextObjectType.PLAIN_TEXT,
-				text: 'Select an action',
+				text: t.EditLevelModalStrings.actionSelectPlaceholder,
 			},
 			initialValue: initialAction,
 			options: allowed.map((act) => ({
@@ -125,7 +127,7 @@ export async function buildEditLevelModal(
 		optional: true,
 		label: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: LevelConfigStrings.timeoutLabel,
+			text: t.LevelConfigStrings.timeoutLabel,
 			emoji: true,
 		},
 		element: {
@@ -135,7 +137,9 @@ export async function buildEditLevelModal(
 			actionId: EditLevelActionId.TIMEOUT_INPUT,
 			placeholder: {
 				type: TextObjectType.PLAIN_TEXT,
-				text: `e.g. ${defaultTimeout}`,
+				text: t.EditLevelModalStrings.timeoutPlaceholder(
+					defaultTimeout,
+				),
 			},
 			initialValue: String(initialTimeout),
 		} as PlainTextInputElement,
@@ -147,11 +151,11 @@ export async function buildEditLevelModal(
 		optional: true,
 		label: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: LevelConfigStrings.customNotificationLabel,
+			text: t.LevelConfigStrings.customNotificationLabel,
 		},
 		hint: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: LevelConfigStrings.customNotificationHint,
+			text: t.LevelConfigStrings.customNotificationHint,
 		},
 		element: {
 			type: 'plain_text_input',
@@ -172,7 +176,7 @@ export async function buildEditLevelModal(
 		type: UIKitSurfaceType.MODAL,
 		title: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: `Edit — ${levelLabel(level)}`,
+			text: t.EditLevelModalStrings.modalTitle(levelLabel(level)),
 			emoji: true,
 		},
 		blocks: [
@@ -189,7 +193,10 @@ export async function buildEditLevelModal(
 			style: 'success',
 			blockId: EditLevelBlockId.SUBMIT_BTN,
 			actionId: `${EditLevelActionId.SUBMIT}_${level}`,
-			text: { type: TextObjectType.PLAIN_TEXT, text: 'Save' },
+			text: {
+				type: TextObjectType.PLAIN_TEXT,
+				text: t.commonModalText.submit,
+			},
 		},
 		close: {
 			type: 'button',
@@ -197,7 +204,10 @@ export async function buildEditLevelModal(
 			style: 'danger',
 			blockId: EditLevelBlockId.CLOSE_BTN,
 			actionId: EditLevelActionId.CLOSE,
-			text: { type: TextObjectType.PLAIN_TEXT, text: 'Cancel' },
+			text: {
+				type: TextObjectType.PLAIN_TEXT,
+				text: t.commonModalText.cancel,
+			},
 		},
 	};
 }

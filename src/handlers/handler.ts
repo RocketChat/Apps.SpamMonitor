@@ -12,7 +12,6 @@ import {
 	UserSpamRecord,
 } from '../definition/spamlevel';
 import { UserStatusStore } from '../persistence/userStatusStore';
-import { slashNotifications } from '../enums/notifications';
 import { buildManageUserModal } from '../modals/manageUsers';
 import {
 	LIST_OVERFLOW_BLOCK_ID,
@@ -24,6 +23,9 @@ import { ScheduleStore } from '../persistence/scheduleReports/scheduleStore';
 import { buildScheduleSetupModal } from '../modals/scheduleReportModal';
 import { UIKitSurfaceType } from '@rocket.chat/apps-engine/definition/uikit';
 import { buildConfigOverviewModal } from '../modals/configOverviewModal';
+import { Translations } from '../definition/languagepreference';
+import { LanguagePreferenceStorage } from '../persistence/languagePreferenceStorage';
+import { getTranslations } from '../lib/translations';
 
 export class SpamMonitorHandler {
 	constructor(
@@ -35,6 +37,19 @@ export class SpamMonitorHandler {
 		private readonly persis: IPersistence,
 		private readonly appId: string,
 	) {}
+	private cachedTranslations: Translations | undefined;
+	private async getT(): Promise<Translations> {
+		if (this.cachedTranslations) return this.cachedTranslations;
+
+		const langStore = new LanguagePreferenceStorage(
+			this.persis,
+			this.read.getPersistenceReader(),
+			this.sender.id,
+		);
+		const lang = await langStore.getLanguage();
+		this.cachedTranslations = getTranslations(lang);
+		return this.cachedTranslations;
+	}
 
 	private async notify(text: string): Promise<void> {
 		await this.modify
@@ -50,7 +65,7 @@ export class SpamMonitorHandler {
 			);
 	}
 
-	private buildSummary(records: UserSpamRecord[]): string {
+	private buildSummary(t: Translations, records: UserSpamRecord[]): string {
 		const now = Date.now();
 		const count = (level: SpammingLevel) =>
 			records.filter((r) => r.spammingLevel === level).length;
@@ -64,17 +79,18 @@ export class SpamMonitorHandler {
 			(r) => r.cooldownUntil > 0 && now < r.cooldownUntil,
 		).length;
 
-		return (
-			`Total flagged: *${total}* | ` +
-			`Monitored: *${monitored}* | ` +
-			`Restricted: *${restricted}* | ` +
-			`Suspended: *${suspended}* | ` +
-			`Pending review: *${adminReview}* | ` +
-			`In timeout: *${timedOut}*`
+		return t.SpamMonitorHandlerStrings.summaryLine(
+			total,
+			monitored,
+			restricted,
+			suspended,
+			adminReview,
+			timedOut,
 		);
 	}
 
 	private buildUserRowBlock(
+		t: Translations,
 		r: UserSpamRecord,
 	): import('@rocket.chat/ui-kit').Block {
 		const label =
@@ -82,17 +98,23 @@ export class SpamMonitorHandler {
 		const now = Date.now();
 		const cooldownStr =
 			r.cooldownUntil > 0 && now < r.cooldownUntil
-				? ` | timeout until ${new Date(r.cooldownUntil)
-						.toISOString()
-						.slice(0, 16)
-						.replace('T', ' ')} UTC`
+				? t.SpamMonitorHandlerStrings.cooldownSuffix(
+						new Date(r.cooldownUntil)
+							.toISOString()
+							.slice(0, 16)
+							.replace('T', ' '),
+					)
 				: '';
 
 		return {
 			type: 'section' as const,
 			text: {
 				type: TextObjectType.MRKDWN,
-				text: `@${r.username} — *${label}*${cooldownStr}`,
+				text: t.SpamMonitorHandlerStrings.userRowLine(
+					r.username,
+					label,
+					cooldownStr,
+				),
 			},
 			accessory: {
 				type: 'overflow' as const,
@@ -104,7 +126,8 @@ export class SpamMonitorHandler {
 						value: `${ManageUserActionId.OPEN_MANAGE_MODAL}::${r.userId}`,
 						text: {
 							type: TextObjectType.PLAIN_TEXT,
-							text: 'Manage user',
+							text: t.SpamMonitorHandlerStrings
+								.manageUserOverflowOption,
 							emoji: true,
 						},
 					},
@@ -114,6 +137,7 @@ export class SpamMonitorHandler {
 	}
 
 	private async renderList(
+		t: Translations,
 		records: UserSpamRecord[],
 		title: string,
 		allRecords: UserSpamRecord[],
@@ -124,17 +148,17 @@ export class SpamMonitorHandler {
 			return;
 		}
 
-		const summary = this.buildSummary(allRecords);
+		const summary = this.buildSummary(t, allRecords);
 
 		const headerBlock = {
 			type: 'section' as const,
 			text: {
 				type: TextObjectType.MRKDWN,
-				text: `${summary}\n\n*${title}*`,
+				text: t.SpamMonitorHandlerStrings.listHeader(summary, title),
 			},
 		};
 
-		const userBlocks = records.map((r) => this.buildUserRowBlock(r));
+		const userBlocks = records.map((r) => this.buildUserRowBlock(t, r));
 		const allBlocks = [headerBlock, ...userBlocks];
 
 		const msg = this.modify
@@ -149,6 +173,7 @@ export class SpamMonitorHandler {
 	}
 
 	private async listByLevelEnum(
+		t: Translations,
 		level: SpammingLevel,
 		title: string,
 	): Promise<void> {
@@ -157,14 +182,16 @@ export class SpamMonitorHandler {
 			.filter((r) => r.spammingLevel === level)
 			.sort((a, b) => a.username.localeCompare(b.username));
 		await this.renderList(
+			t,
 			filtered,
-			`${title} Users`,
+			t.SpamMonitorHandlerStrings.listTitleSuffix(title),
 			all,
-			slashNotifications.NO_FLAGGED_USERS_FILTER(title),
+			t.slashNotifications.NO_FLAGGED_USERS_FILTER(title),
 		);
 	}
 
 	public async listAll(): Promise<void> {
+		const t = await this.getT();
 		const records = await UserStatusStore.getAll(this.read);
 		const sorted = [...records].sort((a, b) =>
 			b.spammingLevel !== a.spammingLevel
@@ -172,21 +199,25 @@ export class SpamMonitorHandler {
 				: a.username.localeCompare(b.username),
 		);
 		await this.renderList(
+			t,
 			sorted,
-			'All Flagged Users',
+			t.SpamMonitorHandlerStrings.allFlaggedUsersTitle,
 			records,
-			slashNotifications.NO_FLAGGED_USERS,
+			t.slashNotifications.NO_FLAGGED_USERS,
 		);
 	}
 
 	public async listAdminReview(): Promise<void> {
+		const t = await this.getT();
 		return this.listByLevelEnum(
+			t,
 			SpammingLevel.AdminReview,
-			'Pending Admin Review',
+			t.SpamMonitorHandlerStrings.pendingAdminReviewTitle,
 		);
 	}
 
 	public async listByLevel(levelName: string): Promise<void> {
+		const t = await this.getT();
 		const matchable = (
 			Object.entries(SPAMMING_LEVEL_LABELS) as [string, string][]
 		).filter(([key]) => Number(key) !== SpammingLevel.AdminReview);
@@ -196,40 +227,47 @@ export class SpamMonitorHandler {
 		if (!matched) {
 			const valid = matchable.map(([, label]) => label).join(', ');
 			await this.notify(
-				`Unknown level *${levelName}*. Valid levels: ${valid}.\n` +
-					`For admin review users, use \`list review\`.`,
+				t.SpamMonitorHandlerStrings.unknownLevelError(levelName, valid),
 			);
 			return;
 		}
 		return this.listByLevelEnum(
+			t,
 			Number(matched[0]) as SpammingLevel,
 			matched[1],
 		);
 	}
 
 	public async listTimeout(): Promise<void> {
+		const t = await this.getT();
 		const records = await UserStatusStore.getAll(this.read);
 		const now = Date.now();
 		const filtered = records
 			.filter((r) => r.cooldownUntil > 0 && now < r.cooldownUntil)
 			.sort((a, b) => a.cooldownUntil - b.cooldownUntil);
 		await this.renderList(
+			t,
 			filtered,
-			'Users in Active Timeout',
+			t.SpamMonitorHandlerStrings.activeTimeoutTitle,
 			records,
-			slashNotifications.NO_FLAGGED_USERS_FILTER('active timeout'),
+			t.slashNotifications.NO_FLAGGED_USERS_FILTER(
+				t.SpamMonitorHandlerStrings.activeTimeoutFilterKey,
+			),
 		);
 	}
 
 	public async sendNotification(text: string): Promise<void> {
 		await this.notify(text);
 	}
+
 	public async manageUser(
 		username: string,
 		triggerId: string,
 	): Promise<void> {
+		const t = await this.getT();
+
 		if (!username) {
-			await this.notify(slashNotifications.MANAGE_MISSING_USERNAME);
+			await this.notify(t.slashNotifications.MANAGE_MISSING_USERNAME);
 			return;
 		}
 
@@ -238,35 +276,39 @@ export class SpamMonitorHandler {
 			.getByUsername(username);
 
 		if (!targetUser) {
-			await this.notify(slashNotifications.USER_NOT_FOUND(username));
+			await this.notify(t.slashNotifications.USER_NOT_FOUND(username));
 			return;
 		}
 
 		const record = await UserStatusStore.get(this.read, targetUser.id);
 
 		if (!record) {
-			await this.notify(slashNotifications.USER_NOT_FOUND(username));
+			await this.notify(t.slashNotifications.USER_NOT_FOUND(username));
 			return;
 		}
 
-		const modal = buildManageUserModal(record, this.appId);
+		const modal = buildManageUserModal(record, this.appId, t);
 		await this.modify
 			.getUiController()
 			.openSurfaceView(modal, { triggerId }, this.sender);
 	}
 
 	public async configureLevels(triggerId: string): Promise<void> {
+		const t = await this.getT();
 		const modal = await buildLevelConfigOverviewModal(
 			this.read,
 			this.appId,
+			t,
 		);
 		await this.modify
 			.getUiController()
 			.openSurfaceView(modal, { triggerId }, this.sender);
 	}
+
 	public async scheduleReport(triggerId: string): Promise<void> {
+		const t = await this.getT();
 		const existing = await ScheduleStore.get(this.read);
-		const modal = buildScheduleSetupModal(this.appId, existing);
+		const modal = buildScheduleSetupModal(this.appId, t, existing);
 		await this.modify
 			.getUiController()
 			.openSurfaceView(
@@ -277,7 +319,8 @@ export class SpamMonitorHandler {
 	}
 
 	public async openConfigModal(triggerId: string): Promise<void> {
-		const modal = buildConfigOverviewModal(this.appId);
+		const t = await this.getT();
+		const modal = buildConfigOverviewModal(this.appId, t);
 		await this.modify
 			.getUiController()
 			.openSurfaceView(

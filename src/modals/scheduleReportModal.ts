@@ -21,49 +21,62 @@ import {
 	formatOffset,
 	formatTime12h,
 } from '../core/scheduleCron';
-import {
-	commonModalText,
-	scheduleSetupModalText as msg,
-} from '../lib/translations/locals/en';
-
-const DAY_OPTIONS = [
-	{ text: msg.days.sun, value: '0' },
-	{ text: msg.days.mon, value: '1' },
-	{ text: msg.days.tue, value: '2' },
-	{ text: msg.days.wed, value: '3' },
-	{ text: msg.days.thu, value: '4' },
-	{ text: msg.days.fri, value: '5' },
-	{ text: msg.days.sat, value: '6' },
-];
-
-const CADENCE_LABELS: Record<CadencePreset, string> = {
-	[CadencePreset.DAILY]: msg.cadenceLabels.daily,
-	[CadencePreset.WEEKDAYS]: msg.cadenceLabels.weekdays,
-	[CadencePreset.WEEKLY]: msg.cadenceLabels.weekly,
-	[CadencePreset.CUSTOM]: msg.cadenceLabels.custom,
-};
+import { Translations } from '../definition/languagepreference';
 
 export function buildScheduleSetupModal(
 	appId: string,
+	t: Translations,
 	existing?: ScheduleRecord | null,
 	confirmDraft?: ScheduleDraft | null,
 	mode: 'setup' | 'confirm' | 'delete' = confirmDraft ? 'confirm' : 'setup',
 ): IUIKitModalViewParam {
+	const msg = t.scheduleSetupModalText;
+
+	const DAY_OPTIONS = [
+		{ text: msg.days.sun, value: '0' },
+		{ text: msg.days.mon, value: '1' },
+		{ text: msg.days.tue, value: '2' },
+		{ text: msg.days.wed, value: '3' },
+		{ text: msg.days.thu, value: '4' },
+		{ text: msg.days.fri, value: '5' },
+		{ text: msg.days.sat, value: '6' },
+	];
+
+	const CADENCE_LABELS: Record<CadencePreset, string> = {
+		[CadencePreset.DAILY]: msg.cadenceLabels.daily,
+		[CadencePreset.WEEKDAYS]: msg.cadenceLabels.weekdays,
+		[CadencePreset.WEEKLY]: msg.cadenceLabels.weekly,
+		[CadencePreset.CUSTOM]: msg.cadenceLabels.custom,
+	};
+
 	if (mode === 'delete') {
 		if (!existing) {
-			return buildScheduleSetupModal(appId, existing, null, 'setup');
+			return buildScheduleSetupModal(appId, t, existing, null, 'setup');
 		}
-		return buildDeleteConfirmBlocks(appId, existing);
+		return buildDeleteConfirmBlocks(
+			appId,
+			t,
+			existing,
+			DAY_OPTIONS,
+			CADENCE_LABELS,
+		);
 	}
 
 	if (confirmDraft) {
-		return buildConfirmStageBlocks(appId, confirmDraft, !!existing);
+		return buildConfirmStageBlocks(
+			appId,
+			t,
+			confirmDraft,
+			!!existing,
+			DAY_OPTIONS,
+			CADENCE_LABELS,
+		);
 	}
 
 	const preset = existing?.preset ?? CadencePreset.DAILY;
 	const initialDays = existing?.days ?? [];
 	const headerText = existing
-		? msg.setup.headerExisting(describeExisting(existing))
+		? msg.setup.headerExisting(describeExisting(existing, CADENCE_LABELS))
 		: msg.setup.headerDefault;
 
 	const headerBlock: SectionBlock = {
@@ -212,7 +225,7 @@ export function buildScheduleSetupModal(
 			actionId: ScheduleActionId.CLOSE,
 			text: {
 				type: TextObjectType.PLAIN_TEXT,
-				text: commonModalText.cancel,
+				text: t.commonModalText.cancel,
 			},
 		} as ButtonElement,
 	};
@@ -220,9 +233,13 @@ export function buildScheduleSetupModal(
 
 function buildConfirmStageBlocks(
 	appId: string,
+	t: Translations,
 	draft: ScheduleDraft,
 	hadExisting: boolean,
+	DAY_OPTIONS: Array<{ text: string; value: string }>,
+	CADENCE_LABELS: Record<CadencePreset, string>,
 ): IUIKitModalViewParam {
+	const msg = t.scheduleSetupModalText;
 	const daysStr = draft.days.length
 		? draft.days.map((d) => DAY_OPTIONS[d].text).join(', ')
 		: msg.everyDay;
@@ -289,7 +306,7 @@ function buildConfirmStageBlocks(
 			actionId: ScheduleActionId.CLOSE,
 			text: {
 				type: TextObjectType.PLAIN_TEXT,
-				text: commonModalText.cancel,
+				text: t.commonModalText.cancel,
 			},
 		} as ButtonElement,
 	};
@@ -297,8 +314,12 @@ function buildConfirmStageBlocks(
 
 function buildDeleteConfirmBlocks(
 	appId: string,
+	t: Translations,
 	existing: ScheduleRecord,
+	DAY_OPTIONS: Array<{ text: string; value: string }>,
+	CADENCE_LABELS: Record<CadencePreset, string>,
 ): IUIKitModalViewParam {
+	const msg = t.scheduleSetupModalText;
 	const daysStr = existing.days.length
 		? existing.days.map((d) => DAY_OPTIONS[d].text).join(', ')
 		: msg.everyDay;
@@ -358,13 +379,16 @@ function buildDeleteConfirmBlocks(
 			actionId: ScheduleActionId.CLOSE,
 			text: {
 				type: TextObjectType.PLAIN_TEXT,
-				text: commonModalText.cancel,
+				text: t.commonModalText.cancel,
 			},
 		} as ButtonElement,
 	};
 }
 
-function describeExisting(record: ScheduleRecord): string {
+function describeExisting(
+	record: ScheduleRecord,
+	CADENCE_LABELS: Record<CadencePreset, string>,
+): string {
 	return `${CADENCE_LABELS[record.preset]} at ${formatTime12h(record.reportTime)}`;
 }
 

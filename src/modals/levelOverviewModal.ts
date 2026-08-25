@@ -22,7 +22,7 @@ import {
 	OverviewActionId,
 	OverviewBlockId,
 } from '../enums/modals/levelConfig';
-import { LevelConfigStrings } from '../lib/translations/locals/en';
+import { Translations } from '../definition/languagepreference';
 
 function formatActionSummary(config: LevelConfig): string {
 	const actionLabel = LEVEL_ACTION_LABELS[config.action];
@@ -32,16 +32,17 @@ function formatActionSummary(config: LevelConfig): string {
 	return actionLabel;
 }
 
-function formatMessagePreview(config: LevelConfig): string {
+function formatMessagePreview(config: LevelConfig, t: Translations): string {
 	const msg = config.message?.trim();
-	if (!msg) return '_No custom message (default used)_';
+	if (!msg) return t.LevelOverviewModalStrings.noCustomMessage;
 	const preview = msg.length > 80 ? `${msg.slice(0, 77)}…` : msg;
-	return `_"${preview}"_`;
+	return t.LevelOverviewModalStrings.messagePreviewTruncated(preview);
 }
 
 export async function buildLevelConfigOverviewModal(
 	read: IRead,
 	appId: string,
+	t: Translations,
 ): Promise<IUIKitSurfaceViewParam> {
 	const allConfigs = await LevelConfigStore.getAll(read);
 
@@ -49,7 +50,7 @@ export async function buildLevelConfigOverviewModal(
 		type: 'section',
 		text: {
 			type: TextObjectType.MRKDWN,
-			text: LevelConfigStrings.levelOverviewModalHeader,
+			text: t.LevelConfigStrings.levelOverviewModalHeader,
 		},
 	};
 
@@ -65,7 +66,10 @@ export async function buildLevelConfigOverviewModal(
 			blockId: `${OverviewBlockId.LEVEL_ROW_PREFIX}${level}`,
 			text: {
 				type: TextObjectType.MRKDWN,
-				text: `*${levelLabel(level)}*\nAction: ${formatActionSummary(config)}`,
+				text: t.LevelOverviewModalStrings.actionSummaryPrefix(
+					levelLabel(level),
+					formatActionSummary(config),
+				),
 			},
 			accessory: {
 				type: 'button',
@@ -74,7 +78,7 @@ export async function buildLevelConfigOverviewModal(
 				actionId: `${OverviewActionId.EDIT_LEVEL_PREFIX}${level}`,
 				text: {
 					type: TextObjectType.PLAIN_TEXT,
-					text: 'Edit',
+					text: t.commonModalText.edit,
 					emoji: true,
 				},
 				value: String(level),
@@ -86,7 +90,9 @@ export async function buildLevelConfigOverviewModal(
 			elements: [
 				{
 					type: TextObjectType.MRKDWN,
-					text: `Message: ${formatMessagePreview(config)}`,
+					text: t.LevelOverviewModalStrings.messagePreviewPrefix(
+						formatMessagePreview(config, t),
+					),
 				},
 			],
 		};
@@ -100,7 +106,7 @@ export async function buildLevelConfigOverviewModal(
 		type: UIKitSurfaceType.MODAL,
 		title: {
 			type: TextObjectType.PLAIN_TEXT,
-			text: 'Level Config',
+			text: t.LevelOverviewModalStrings.modalTitle,
 			emoji: true,
 		},
 		blocks: [headerBlock, topDivider, ...levelBlocks],
@@ -109,7 +115,10 @@ export async function buildLevelConfigOverviewModal(
 			appId,
 			blockId: OverviewBlockId.CLOSE_BTN,
 			actionId: OverviewActionId.CLOSE,
-			text: { type: TextObjectType.PLAIN_TEXT, text: 'Close' },
+			text: {
+				type: TextObjectType.PLAIN_TEXT,
+				text: t.commonModalText.close,
+			},
 		},
 	};
 }

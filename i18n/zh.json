@@ -1,0 +1,14 @@
+{
+    "antispam_setting_monitoring_window_days_label": "监控窗口（天）",
+    "antispam_setting_monitoring_window_days_description": "在账户创建后的这段天数内跟踪新用户（默认值：42 = 6周）",
+    "antispam_setting_sliding_window_seconds_label": "滑动窗口（秒）",
+    "antispam_setting_sliding_window_seconds_description": "用于检测重复/跨频道消息的时间窗口（默认值：300 = 5分钟）",
+    "antispam_setting_cross_channel_threshold_label": "跨频道阈值",
+    "antispam_setting_cross_channel_threshold_description": "重复消息需出现在多少个不同频道中才会触发操作（默认值：3）",
+    "antispam_setting_rate_short_burst_label": "速率限制 — 短时突发（30秒）",
+    "antispam_setting_rate_short_burst_description": "每位用户在30秒短时突发内允许发送的消息数量（默认值：5）",
+    "antispam_setting_rate_sustained_label": "速率限制 — 持续（2分钟）",
+    "antispam_setting_rate_sustained_description": "每位用户在持续2分钟窗口内允许发送的消息数量（默认值：12）",
+    "SpamMonitor_Command_Description": "垃圾信息监控斜杠命令（仅限管理员）",
+    "SpamMonitor_Command_ParamsExample": "list all | list timeout | list <Level> | manage <username> | level | config "
+}

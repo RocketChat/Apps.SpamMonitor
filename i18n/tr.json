@@ -1,0 +1,14 @@
+{
+    "antispam_setting_monitoring_window_days_label": "İzleme Penceresi (gün)",
+    "antispam_setting_monitoring_window_days_description": "Hesap oluşturulduktan sonra yeni kullanıcıları bu kadar gün boyunca izle (varsayılan: 42 = 6 hafta)",
+    "antispam_setting_sliding_window_seconds_label": "Kayan Pencere (saniye)",
+    "antispam_setting_sliding_window_seconds_description": "Yinelenen/kanallar arası mesajları tespit etmek için zaman penceresi (varsayılan: 300 = 5 dk)",
+    "antispam_setting_cross_channel_threshold_label": "Kanallar Arası Eşik",
+    "antispam_setting_cross_channel_threshold_description": "Bir eylemi tetiklemek için bir yinelenen mesajın görünmesi gereken farklı kanal sayısı (varsayılan: 3)",
+    "antispam_setting_rate_short_burst_label": "Hız Sınırı — Kısa Patlama (30 sn)",
+    "antispam_setting_rate_short_burst_description": "Kullanıcı başına kısa 30 saniyelik bir patlamada izin verilen mesaj sayısı (varsayılan: 5)",
+    "antispam_setting_rate_sustained_label": "Hız Sınırı — Sürekli (2 dk)",
+    "antispam_setting_rate_sustained_description": "Kullanıcı başına sürekli 2 dakikalık bir pencerede izin verilen mesaj sayısı (varsayılan: 12)",
+    "SpamMonitor_Command_Description": "Spam izleyici eğik çizgi komutu (yalnızca yönetici)",
+    "SpamMonitor_Command_ParamsExample": "list all | list timeout | list <Level> | manage <username> | level | config "
+}

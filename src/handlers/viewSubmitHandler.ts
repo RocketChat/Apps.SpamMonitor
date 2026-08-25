@@ -20,6 +20,7 @@ import { sendNotification } from '../lib/utils/notifications';
 import { RoomInteractionStorage } from '../persistence/roomInteraction';
 import {
 	AdminActionMessages,
+	languageNotification,
 	levelConfigNotification,
 	scheduleNotification,
 	scheduleValidationText,
@@ -57,6 +58,15 @@ import {
 	parseWhitelistChannelListInput,
 	parseWhitelistRoleListInput,
 } from '../modals/whiteListModal';
+import {
+	Language,
+	LANGUAGE_LABELS,
+	Translations,
+} from '../definition/languagepreference';
+import { parseLanguageSelection } from '../modals/setLanguage';
+import { LanguagePreferenceStorage } from '../persistence/languagePreferenceStorage';
+import { LANGUAGE_SELECT_MODAL_ID } from '../enums/modals/language';
+import { getTranslations } from '../lib/translations';
 
 export class ViewSubmitHandler {
 	constructor(
@@ -68,6 +78,20 @@ export class ViewSubmitHandler {
 		private readonly context: UIKitViewSubmitInteractionContext,
 	) {}
 
+	private cachedTranslations: Translations | undefined;
+
+	private async getT(): Promise<Translations> {
+		if (this.cachedTranslations) return this.cachedTranslations;
+		const { user } = this.context.getInteractionData();
+		const langStore = new LanguagePreferenceStorage(
+			this.persistence,
+			this.read.getPersistenceReader(),
+			user.id,
+		);
+		const lang = await langStore.getLanguage();
+		this.cachedTranslations = getTranslations(lang);
+		return this.cachedTranslations;
+	}
 	public async handle(): Promise<IUIKitResponse> {
 		const { view, user } = this.context.getInteractionData();
 
@@ -108,10 +132,15 @@ export class ViewSubmitHandler {
 				user,
 			);
 		}
+		if (view.id === LANGUAGE_SELECT_MODAL_ID) {
+			return this.handleLanguageSave(
+				view.state as Record<string, Record<string, unknown>>,
+				user,
+			);
+		}
 		if (!view.id.startsWith(CONFIRM_ACTION_MODAL_ID)) {
 			return this.context.getInteractionResponder().successResponse();
 		}
-
 		// view.id format: confirm_action_modal::<realAction>::<userId>::<roomId>
 		const parts = view.id.split('::');
 		if (parts.length !== 4) {
@@ -232,7 +261,8 @@ export class ViewSubmitHandler {
 			draft,
 		});
 		const existing = await ScheduleStore.get(this.read);
-		const confirmView = buildScheduleSetupModal(appId, existing, draft);
+		const t = await this.getT();
+		const confirmView = buildScheduleSetupModal(appId, t, existing, draft);
 
 		return this.context
 			.getInteractionResponder()
@@ -443,6 +473,42 @@ export class ViewSubmitHandler {
 				notFound,
 			),
 		);
+		return this.context.getInteractionResponder().successResponse();
+	}
+	private async handleLanguageSave(
+		state: Record<string, Record<string, unknown>>,
+		user: IUser,
+	): Promise<IUIKitResponse> {
+		const selected = parseLanguageSelection(state);
+		if (!selected) {
+			return this.context.getInteractionResponder().successResponse();
+		}
+
+		const store = new LanguagePreferenceStorage(
+			this.persistence,
+			this.read.getPersistenceReader(),
+			user.id,
+		);
+		await store.setLanguage(selected);
+
+		const roomStorage = new RoomInteractionStorage(
+			this.persistence,
+			this.read.getPersistenceReader(),
+			user.id,
+		);
+		const roomId = await roomStorage.getInteractionRoomId();
+		const room = roomId
+			? await this.read.getRoomReader().getById(roomId)
+			: null;
+		const t = await this.getT();
+		if (room) {
+			await sendNotification(this.read, this.modify, user, room, {
+				message: t.languageNotification.LanguageChanged(
+					LANGUAGE_LABELS[selected as Language],
+				),
+			});
+		}
+
 		return this.context.getInteractionResponder().successResponse();
 	}
 	private async notifyWhitelistChange(

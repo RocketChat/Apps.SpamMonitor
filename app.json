@@ -10,7 +10,14 @@
     },
     "defaultLanguage": "en",
     "i18n": [
-        "en.json"
+        "en.json",
+        "fr.json",
+        "pt.json",
+        "ru.json",
+        "es.json",
+        "tr.json",
+        "zh.json",
+        "du.json"
     ],
     "name": "Apps.SpamMonitor",
     "nameSlug": "appsspammonitor",

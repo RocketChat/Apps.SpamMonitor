@@ -1,0 +1,14 @@
+{
+    "antispam_setting_monitoring_window_days_label": "Окно мониторинга (дни)",
+    "antispam_setting_monitoring_window_days_description": "Отслеживать новых пользователей в течение указанного количества дней после создания аккаунта (по умолчанию: 42 = 6 недель)",
+    "antispam_setting_sliding_window_seconds_label": "Скользящее окно (секунды)",
+    "antispam_setting_sliding_window_seconds_description": "Временное окно для обнаружения повторяющихся/межканальных сообщений (по умолчанию: 300 = 5 мин)",
+    "antispam_setting_cross_channel_threshold_label": "Порог межканального обнаружения",
+    "antispam_setting_cross_channel_threshold_description": "Количество разных каналов, в которых должен появиться дубликат, чтобы вызвать действие (по умолчанию: 3)",
+    "antispam_setting_rate_short_burst_label": "Ограничение скорости — короткий всплеск (30 сек)",
+    "antispam_setting_rate_short_burst_description": "Количество сообщений, разрешённых пользователю за короткий 30-секундный всплеск (по умолчанию: 5)",
+    "antispam_setting_rate_sustained_label": "Ограничение скорости — устойчивое (2 мин)",
+    "antispam_setting_rate_sustained_description": "Количество сообщений, разрешённых пользователю за устойчивое 2-минутное окно (по умолчанию: 12)",
+    "SpamMonitor_Command_Description": "Слэш-команда монитора спама (только для администраторов)",
+    "SpamMonitor_Command_ParamsExample": "list all | list timeout | list <Level> | manage <username> | level | config "
+}

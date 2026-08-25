@@ -11,27 +11,25 @@ import {
 	BlockId,
 } from '../enums/modals/manageUsers';
 import {
-	ConfirmActionMeta,
-	confirmationModal,
-} from '../lib/translations/locals/en';
-import {
 	LEVEL_RESET_ACTION_ID,
 	ConfirmMeta,
 } from '../definition/confirmationModal';
+import { Translations } from '../definition/languagepreference';
 
 export function buildConfirmActionModal(
 	realAction: ManageUserActionId | typeof LEVEL_RESET_ACTION_ID,
 	identifier: string,
 	displayName: string,
 	appId: string,
+	t: Translations,
 	roomId?: string,
 	overrideMeta?: ConfirmMeta,
 	showAtMention = true,
 ): IUIKitSurfaceViewParam {
 	const meta: ConfirmMeta =
 		overrideMeta ??
-		ConfirmActionMeta[realAction as ManageUserActionId] ??
-		confirmationModal.ManageUserAction;
+		t.ConfirmActionMeta[realAction as ManageUserActionId] ??
+		t.confirmationModal.ManageUserAction;
 	const viewId = `${CONFIRM_ACTION_MODAL_ID}::${realAction}::${identifier}::${roomId}`;
 
 	const submitButton: ButtonElement = {
@@ -48,7 +46,10 @@ export function buildConfirmActionModal(
 		appId,
 		blockId: BlockId.CONFIRM_CLOSE,
 		actionId: BlockId.CONFIRM_CLOSE,
-		text: { type: TextObjectType.PLAIN_TEXT, text: 'Cancel' },
+		text: {
+			type: TextObjectType.PLAIN_TEXT,
+			text: t.commonModalText.cancel,
+		},
 	};
 
 	const targetSection: SectionBlock = {
@@ -76,6 +77,7 @@ export function buildResetLevelConfirmModal(
 	level: number,
 	levelDisplayName: string,
 	appId: string,
+	t: Translations,
 	roomId?: string,
 ): IUIKitSurfaceViewParam {
 	return buildConfirmActionModal(
@@ -83,8 +85,9 @@ export function buildResetLevelConfirmModal(
 		String(level),
 		levelDisplayName,
 		appId,
+		t,
 		roomId,
-		confirmationModal.LevelResetToDefault,
+		t.confirmationModal.LevelResetToDefault,
 		false,
 	);
 }
