@@ -2,7 +2,7 @@
 
 # Contributing
 
-ThankYou for considering contributing to Apps.SpamMonitor. Before your contribution can be integrated into the main codebase, it goes through a few standard stages. This document walks you through them.
+Thank you for considering contributing to Apps.SpamMonitor. Before your contribution can be integrated into the main codebase, it goes through a few standard stages. This document walks you through them.
 
 ---
 
