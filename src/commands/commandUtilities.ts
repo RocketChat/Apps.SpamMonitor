@@ -10,15 +10,15 @@ import {
 } from '@rocket.chat/apps-engine/definition/slashcommands';
 import { SpamMonitorHandler } from '../handlers/handler';
 import { SpamMonitorParam } from '../enums/commandUtilities';
-import { slashCommandHelp, slashNotifications } from '../enums/notifications';
 import { ADMIN_CHANNEL_NAME } from '../constants/config';
 import { RoomInteractionStorage } from '../persistence/roomInteraction';
+import { LanguagePreferenceStorage } from '../persistence/languagePreferenceStorage';
+import { getTranslations } from '../lib/translations';
 
 export class SpamMonitorCommand implements ISlashCommand {
 	public command = 'spammonitor';
 	public i18nDescription = 'SpamMonitor_Command_Description';
-	public i18nParamsExample =
-		'list all | list timeout | list <Level> | manage <username> | level | config ';
+	public i18nParamsExample = 'SpamMonitor_Command_ParamsExample';
 	public providesPreview = false;
 
 	constructor(private readonly appId: string) {}
@@ -51,16 +51,24 @@ export class SpamMonitorCommand implements ISlashCommand {
 			this.appId,
 		);
 
+		const langStore = new LanguagePreferenceStorage(
+			persistence,
+			read.getPersistenceReader(),
+			sender.id,
+		);
+		const lang = await langStore.getLanguage();
+		const t = getTranslations(lang);
+
 		if (room.slugifiedName !== ADMIN_CHANNEL_NAME) {
 			await handler.sendNotification(
-				slashNotifications.ADMIN_CHANNEL_ONLY,
+				t.slashNotifications.ADMIN_CHANNEL_ONLY,
 			);
 			return;
 		}
 
 		const roles = sender.roles || [];
 		if (!roles.includes('admin')) {
-			await handler.sendNotification(slashNotifications.NO_PERMISSION);
+			await handler.sendNotification(t.slashNotifications.NO_PERMISSION);
 			return;
 		}
 
@@ -90,7 +98,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 				const username = rest[0]?.replace(/^@/, '').trim();
 				if (!triggerId) {
 					await handler.sendNotification(
-						slashNotifications.MANAGE_MISSING_USERNAME,
+						t.slashNotifications.MANAGE_MISSING_USERNAME,
 					);
 					return;
 				}
@@ -101,7 +109,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 			case SpamMonitorParam.LEVEL: {
 				if (!triggerId) {
 					await handler.sendNotification(
-						slashNotifications.LEVEL_MISSING_LEVEL,
+						t.slashNotifications.LEVEL_MISSING_LEVEL,
 					);
 					return;
 				}
@@ -111,7 +119,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 			case SpamMonitorParam.SCHEDULE: {
 				if (!triggerId) {
 					await handler.sendNotification(
-						slashNotifications.SCHEDULE_MISSING_TRIGGER,
+						t.slashNotifications.SCHEDULE_MISSING_TRIGGER,
 					);
 					return;
 				}
@@ -121,7 +129,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 			case SpamMonitorParam.CONFIG: {
 				if (!triggerId) {
 					await handler.sendNotification(
-						slashNotifications.CONFIG_MISSING_TRIGGER,
+						t.slashNotifications.CONFIG_MISSING_TRIGGER,
 					);
 					return;
 				}
@@ -130,7 +138,7 @@ export class SpamMonitorCommand implements ISlashCommand {
 			}
 
 			default:
-				await handler.sendNotification(slashCommandHelp.HELP);
+				await handler.sendNotification(t.slashCommandHelp.HELP);
 				break;
 		}
 	}
