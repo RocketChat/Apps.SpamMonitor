@@ -116,7 +116,7 @@ export const LevelConfigStrings = {
 	customNotificationHint: `Leave blank to use the default message shown in the placeholder.`,
 	defaultNotificationInputPlaceholder:
 		'Message sent to the user when this level triggers...',
-} as const;
+};
 
 export const levelConfigNotification = {
 	LevelConfigNoChangesFound: (level: SpammingLevel) =>
@@ -267,9 +267,6 @@ export const scheduleSetupModalText = {
 	},
 };
 
-export const commonModalText = {
-	cancel: 'Cancel',
-};
 export const scheduleValidationText = {
 	invalidTime: 'Enter a valid time as HH:MM, e.g. 09:00',
 	missingCustomDays: 'Select at least one day for Custom cadence.',
@@ -332,4 +329,125 @@ export const configModalText = {
 	title: 'SpamMonitor Config',
 	header: 'Pick a section below to configure.',
 	configureButton: 'Configure',
+};
+export const slashNotifications = {
+	NO_FLAGGED_USERS: 'No flagged users at this time.',
+	NO_PERMISSION: 'You do not have permission to use this command.',
+	ADMIN_CHANNEL_ONLY: 'This command can only be used in the admin channel.',
+	NO_FLAGGED_USERS_FILTER: (filter: string) =>
+		`No flagged users found for filter: *${filter}*.`,
+	USER_NOT_FOUND: (username: string) =>
+		`User *@${username}* not found or has no spam record.`,
+	MANAGE_MISSING_USERNAME: 'Usage: `/spammonitor manage <username>`',
+	LEVEL_MISSING_LEVEL: 'Usage: `/spammonitor level`',
+	SCHEDULE_MISSING_TRIGGER: 'Usage: `/spammonitor schedule`',
+	CONFIG_MISSING_TRIGGER: 'Usage: `/spammonitor config`',
+};
+
+export const slashCommandHelp = {
+	HELP:
+		'*SpamMonitor commands*\n' +
+		'`/spammonitor list all` — all flagged users, highest level first\n' +
+		'`/spammonitor list timeout` — users currently in an active cooldown\n' +
+		'`/spammonitor list <Level>` — users at a specific level e.g. `list review` for admin review users\n' +
+		'`/spammonitor manage <username>` — open admin controls for a flagged user\n' +
+		'`/spammonitor level` — configure action and notification per spam level\n' +
+		'`/spammonitor schedule` — configure daily anti-spam report\n' +
+		'`/spammonitor config` — configure the whitelist for channels and roles to be exempt from spam monitoring',
+};
+
+export const languageModalText = {
+	title: 'Language Settings',
+	header: 'Select your preferred language for bot messages, modals, and notifications.',
+	selectLabel: 'Language',
+	selectPlaceholder: 'Choose a language',
+};
+
+export const commonModalText = {
+	cancel: 'Cancel',
+	submit: 'Submit',
+	edit: 'Edit',
+	close: 'Close',
+	save: 'Save',
+};
+export const languageNotification = {
+	LanguageChanged: (languageLabel: string) =>
+		`Your language preference has been changed to *${languageLabel}*.`,
+};
+
+export const EditLevelModalStrings = {
+	modalTitle: (levelLabelText: string) => `Edit — ${levelLabelText}`,
+	headerTitle: (levelLabelText: string) => `*Editing: ${levelLabelText}*`,
+	backToOverviewButton: '← Back to Overview',
+	resetToDefaultButton: 'Reset to Defaults',
+	actionSelectLabel: 'Action',
+	actionSelectPlaceholder: 'Select an action',
+	timeoutPlaceholder: (defaultTimeout: number) => `e.g. ${defaultTimeout}`,
+};
+export const LevelOverviewModalStrings = {
+	modalTitle: 'Level Config',
+	actionSummaryPrefix: (levelLabelText: string, actionSummary: string) =>
+		`*${levelLabelText}*\nAction: ${actionSummary}`,
+	messagePreviewPrefix: (messagePreview: string) =>
+		`Message: ${messagePreview}`,
+	noCustomMessage: '_No custom message (default used)_',
+	messagePreviewTruncated: (preview: string) => `_"${preview}…"_`,
+	messagePreviewFull: (preview: string) => `_"${preview}"_`,
+};
+export const ManageUserModalStrings = {
+	modalTitle: (username: string) => `Manage @${username}`,
+	userLabel: (username: string) => `*User:* @${username}`,
+	spamLevelFieldLabel: (levelLabelText: string) =>
+		`*Spam Level:*\n${levelLabelText}`,
+	cooldownFieldLabel: (cooldownText: string) =>
+		`*Cooldown:*\n${cooldownText}`,
+	lastEscalationFieldLabel: (dateText: string) =>
+		`*Last Escalation:*\n${dateText}`,
+	actionsHeader: '*Admin Actions*',
+	vouchButtonFallback: 'Vouch',
+	resetCooldownButtonFallback: 'Reset Cooldown',
+	levelDownButtonFallback: 'Level Down',
+	resetToCleanButtonFallback: 'Reset to Clean',
+};
+
+export const SpamMonitorHandlerStrings = {
+	summaryLine: (
+		total: number,
+		monitored: number,
+		restricted: number,
+		suspended: number,
+		adminReview: number,
+		timedOut: number,
+	) =>
+		`Total flagged: *${total}* | ` +
+		`Monitored: *${monitored}* | ` +
+		`Restricted: *${restricted}* | ` +
+		`Suspended: *${suspended}* | ` +
+		`Pending review: *${adminReview}* | ` +
+		`In timeout: *${timedOut}*`,
+	userRowLine: (username: string, label: string, cooldownStr: string) =>
+		`@${username} — *${label}*${cooldownStr}`,
+	cooldownSuffix: (formattedDate: string) =>
+		` | timeout until ${formattedDate} UTC`,
+	manageUserOverflowOption: 'Manage user',
+	listHeader: (summary: string, title: string) => `${summary}\n\n*${title}*`,
+	listTitleSuffix: (title: string) => `${title} Users`,
+	allFlaggedUsersTitle: 'All Flagged Users',
+	pendingAdminReviewTitle: 'Pending Admin Review',
+	unknownLevelError: (levelName: string, validLevels: string) =>
+		`Unknown level *${levelName}*. Valid levels: ${validLevels}.\n` +
+		`For admin review users, use \`list review\`.`,
+	activeTimeoutTitle: 'Users in Active Timeout',
+	activeTimeoutFilterKey: 'active timeout',
+};
+
+export const configEntriesText = {
+	whitelist: {
+		label: 'Whitelist',
+		description: 'Channels and roles fully excluded from spam monitoring.',
+	},
+	language: {
+		label: 'Language',
+		description: 'Choose the language used for bot messages and modals.',
+	},
 };

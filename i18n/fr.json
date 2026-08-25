@@ -1,0 +1,14 @@
+{
+    "antispam_setting_monitoring_window_days_label": "Fenêtre de surveillance (jours)",
+    "antispam_setting_monitoring_window_days_description": "Surveiller les nouveaux utilisateurs pendant ce nombre de jours après la création du compte (par défaut : 42 = 6 semaines)",
+    "antispam_setting_sliding_window_seconds_label": "Fenêtre glissante (secondes)",
+    "antispam_setting_sliding_window_seconds_description": "Fenêtre temporelle pour détecter les messages en double ou multi-canaux (par défaut : 300 = 5 min)",
+    "antispam_setting_cross_channel_threshold_label": "Seuil multi-canaux",
+    "antispam_setting_cross_channel_threshold_description": "Nombre de canaux distincts dans lesquels un doublon doit apparaître pour déclencher une action (par défaut : 3)",
+    "antispam_setting_rate_short_burst_label": "Limite de débit — Rafale courte (30 s)",
+    "antispam_setting_rate_short_burst_description": "Nombre de messages autorisés par utilisateur lors d'une courte rafale de 30 secondes (par défaut : 5)",
+    "antispam_setting_rate_sustained_label": "Limite de débit — Soutenue (2 min)",
+    "antispam_setting_rate_sustained_description": "Nombre de messages autorisés par utilisateur sur une fenêtre soutenue de 2 minutes (par défaut : 12)",
+    "SpamMonitor_Command_Description": "Commande slash du moniteur de spam (administrateurs uniquement)",
+    "SpamMonitor_Command_ParamsExample": "list all | list timeout | list <Level> | manage <username> | level | config "
+}

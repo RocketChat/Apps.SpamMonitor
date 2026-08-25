@@ -1,0 +1,14 @@
+{
+    "antispam_setting_monitoring_window_days_label": "Janela de Monitoramento (dias)",
+    "antispam_setting_monitoring_window_days_description": "Monitorar novos usuários por esse número de dias após a criação da conta (padrão: 42 = 6 semanas)",
+    "antispam_setting_sliding_window_seconds_label": "Janela Deslizante (segundos)",
+    "antispam_setting_sliding_window_seconds_description": "Janela de tempo para detectar mensagens duplicadas/entre canais (padrão: 300 = 5 min)",
+    "antispam_setting_cross_channel_threshold_label": "Limite entre Canais",
+    "antispam_setting_cross_channel_threshold_description": "Número de canais distintos em que uma duplicata deve aparecer para acionar uma ação (padrão: 3)",
+    "antispam_setting_rate_short_burst_label": "Limite de Taxa — Rajada Curta (30s)",
+    "antispam_setting_rate_short_burst_description": "Número de mensagens permitidas por usuário em uma rajada curta de 30 segundos (padrão: 5)",
+    "antispam_setting_rate_sustained_label": "Limite de Taxa — Sustentada (2 min)",
+    "antispam_setting_rate_sustained_description": "Número de mensagens permitidas por usuário em uma janela sustentada de 2 minutos (padrão: 12)",
+    "SpamMonitor_Command_Description": "Comando slash do monitor de spam (somente administradores)",
+    "SpamMonitor_Command_ParamsExample": "list all | list timeout | list <Level> | manage <username> | level | config "
+}

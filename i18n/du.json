@@ -1,0 +1,14 @@
+{
+    "antispam_setting_monitoring_window_days_label": "Überwachungszeitraum (Tage)",
+    "antispam_setting_monitoring_window_days_description": "Neue Benutzer nach Kontoerstellung für diese Anzahl von Tagen überwachen (Standard: 42 = 6 Wochen)",
+    "antispam_setting_sliding_window_seconds_label": "Gleitendes Zeitfenster (Sekunden)",
+    "antispam_setting_sliding_window_seconds_description": "Zeitfenster zur Erkennung doppelter/kanalübergreifender Nachrichten (Standard: 300 = 5 Min.)",
+    "antispam_setting_cross_channel_threshold_label": "Schwellenwert für kanalübergreifende Erkennung",
+    "antispam_setting_cross_channel_threshold_description": "Anzahl der unterschiedlichen Kanäle, in denen ein Duplikat auftreten muss, um eine Maßnahme auszulösen (Standard: 3)",
+    "antispam_setting_rate_short_burst_label": "Ratenbegrenzung — Kurzer Ausbruch (30 s)",
+    "antispam_setting_rate_short_burst_description": "Anzahl der Nachrichten, die einem Benutzer in einem kurzen 30-Sekunden-Ausbruch erlaubt sind (Standard: 5)",
+    "antispam_setting_rate_sustained_label": "Ratenbegrenzung — Anhaltend (2 Min.)",
+    "antispam_setting_rate_sustained_description": "Anzahl der Nachrichten, die einem Benutzer über ein anhaltendes 2-Minuten-Fenster erlaubt sind (Standard: 12)",
+    "SpamMonitor_Command_Description": "Spam-Monitor-Slash-Befehl (nur für Administratoren)",
+    "SpamMonitor_Command_ParamsExample": "list all | list timeout | list <Level> | manage <username> | level | config "
+}
