@@ -7,6 +7,8 @@ import {
 	IRead,
 } from '@rocket.chat/apps-engine/definition/accessors';
 import { ScheduleRecord } from '../../definition/scheduleReports';
+import { serialize } from '../../core/cache/keyedQueue';
+import { SCHEDULE_LOCK_KEY } from '../../constants/serialiseCacheLockKeys';
 
 const ASSOC_SCOPE = 'antispam-schedule-active';
 
@@ -30,11 +32,13 @@ export class ScheduleStore {
 		persistence: IPersistence,
 		record: ScheduleRecord,
 	): Promise<void> {
-		await persistence.updateByAssociation(
-			ScheduleStore.assoc(),
-			record,
-			true,
-		);
+		await serialize(SCHEDULE_LOCK_KEY, async () => {
+			await persistence.updateByAssociation(
+				ScheduleStore.assoc(),
+				record,
+				true,
+			);
+		});
 	}
 
 	public static async markSent(
@@ -42,14 +46,20 @@ export class ScheduleStore {
 		persistence: IPersistence,
 		sentAt: number,
 	): Promise<void> {
-		const existing = await ScheduleStore.get(read);
-		if (!existing) return;
-		await ScheduleStore.replace(persistence, {
-			...existing,
-			lastReportSentAt: sentAt,
+		await serialize(SCHEDULE_LOCK_KEY, async () => {
+			const existing = await ScheduleStore.get(read);
+			if (!existing) return;
+			await persistence.updateByAssociation(
+				ScheduleStore.assoc(),
+				{ ...existing, lastReportSentAt: sentAt },
+				true,
+			);
 		});
 	}
+
 	public static async clear(persistence: IPersistence): Promise<void> {
-		await persistence.removeByAssociation(ScheduleStore.assoc());
+		await serialize(SCHEDULE_LOCK_KEY, async () => {
+			await persistence.removeByAssociation(ScheduleStore.assoc());
+		});
 	}
 }

@@ -14,6 +14,7 @@ import {
 	UserSpamRecord,
 } from '../definition/spamlevel';
 import { DEFAULT_LEVEL_CONFIGS, LevelConfig } from '../definition/levelConfig';
+import { serialize } from '../core/cache/keyedQueue';
 
 const ASSOC_SCOPE = 'antispam-status';
 export class UserStatusStore {
@@ -75,54 +76,56 @@ export class UserStatusStore {
 		username: string,
 		levelConfig: Record<SpammingLevel, LevelConfig> = DEFAULT_LEVEL_CONFIGS,
 	): Promise<UserSpamRecord> {
-		const existing = await UserStatusStore.get(read, userId);
-		const current: UserSpamRecord = existing ?? {
-			userId,
-			username,
-			spammingLevel: SpammingLevel.Clean,
-			cooldownUntil: 0,
-			lastEscalation: 0,
-			totalFlags: 0,
-			flagsAtLevel: 0,
-		};
-
-		const now = Date.now();
-		const newFlagsAtLevel = (current.flagsAtLevel ?? 0) + 1;
-		const threshold = ESCALATION_THRESHOLDS[current.spammingLevel];
-		const canEscalate =
-			newFlagsAtLevel >= threshold &&
-			current.spammingLevel < SpammingLevel.AdminReview;
-
-		if (canEscalate) {
-			const nextLevel =
-				NEXT_LEVEL[current.spammingLevel] ?? current.spammingLevel;
-			const config = levelConfig[nextLevel];
-			const cooldownMs =
-				config.action === 'timeout' && config.timeoutSeconds
-					? config.timeoutSeconds * 1000
-					: 0;
-			const updated: UserSpamRecord = {
+		return serialize(userId, async () => {
+			const existing = await UserStatusStore.get(read, userId);
+			const current: UserSpamRecord = existing ?? {
 				userId,
 				username,
-				spammingLevel: nextLevel,
-				cooldownUntil: cooldownMs > 0 ? now + cooldownMs : 0,
+				spammingLevel: SpammingLevel.Clean,
+				cooldownUntil: 0,
+				lastEscalation: 0,
+				totalFlags: 0,
+				flagsAtLevel: 0,
+			};
+
+			const now = Date.now();
+			const newFlagsAtLevel = (current.flagsAtLevel ?? 0) + 1;
+			const threshold = ESCALATION_THRESHOLDS[current.spammingLevel];
+			const canEscalate =
+				newFlagsAtLevel >= threshold &&
+				current.spammingLevel < SpammingLevel.AdminReview;
+
+			if (canEscalate) {
+				const nextLevel =
+					NEXT_LEVEL[current.spammingLevel] ?? current.spammingLevel;
+				const config = levelConfig[nextLevel];
+				const cooldownMs =
+					config.action === 'timeout' && config.timeoutSeconds
+						? config.timeoutSeconds * 1000
+						: 0;
+				const updated: UserSpamRecord = {
+					userId,
+					username,
+					spammingLevel: nextLevel,
+					cooldownUntil: cooldownMs > 0 ? now + cooldownMs : 0,
+					lastEscalation: now,
+					totalFlags: current.totalFlags + 1,
+					flagsAtLevel: 0,
+				};
+				await UserStatusStore.save(persistence, userId, updated);
+				return updated;
+			}
+
+			const updated: UserSpamRecord = {
+				...current,
+				username,
 				lastEscalation: now,
 				totalFlags: current.totalFlags + 1,
-				flagsAtLevel: 0,
+				flagsAtLevel: newFlagsAtLevel,
 			};
 			await UserStatusStore.save(persistence, userId, updated);
 			return updated;
-		}
-
-		const updated: UserSpamRecord = {
-			...current,
-			username,
-			lastEscalation: now,
-			totalFlags: current.totalFlags + 1,
-			flagsAtLevel: newFlagsAtLevel,
-		};
-		await UserStatusStore.save(persistence, userId, updated);
-		return updated;
+		});
 	}
 	private static isValidRecord(row: unknown): row is UserSpamRecord {
 		if (!row || typeof row !== 'object') return false;
@@ -160,8 +163,13 @@ export class UserStatusStore {
 		}
 
 		if (record.cooldownUntil > 0 && Date.now() >= record.cooldownUntil) {
-			const lifted: UserSpamRecord = { ...record, cooldownUntil: 0 };
-			await UserStatusStore.save(persistence, userId, lifted);
+			const lifted = await serialize(userId, async () => {
+				const latest =
+					(await UserStatusStore.get(read, userId)) ?? record;
+				const cleared: UserSpamRecord = { ...latest, cooldownUntil: 0 };
+				await UserStatusStore.save(persistence, userId, cleared);
+				return cleared;
+			});
 			return { restricted: false, record: lifted };
 		}
 
@@ -174,18 +182,20 @@ export class UserStatusStore {
 		username: string,
 		adminUsername: string,
 	): Promise<void> {
-		const record: UserSpamRecord = {
-			userId,
-			username,
-			spammingLevel: SpammingLevel.Clean,
-			cooldownUntil: 0,
-			lastEscalation: 0,
-			totalFlags: 0,
-			flagsAtLevel: 0,
-			vouched: true,
-			vouchedBy: adminUsername,
-		};
-		await UserStatusStore.save(persistence, userId, record);
+		await serialize(userId, async () => {
+			const record: UserSpamRecord = {
+				userId,
+				username,
+				spammingLevel: SpammingLevel.Clean,
+				cooldownUntil: 0,
+				lastEscalation: 0,
+				totalFlags: 0,
+				flagsAtLevel: 0,
+				vouched: true,
+				vouchedBy: adminUsername,
+			};
+			await UserStatusStore.save(persistence, userId, record);
+		});
 	}
 
 	public static async resetCooldown(
@@ -193,11 +203,13 @@ export class UserStatusStore {
 		persistence: IPersistence,
 		userId: string,
 	): Promise<void> {
-		const existing = await UserStatusStore.get(read, userId);
-		if (!existing) return;
-		await UserStatusStore.save(persistence, userId, {
-			...existing,
-			cooldownUntil: 0,
+		await serialize(userId, async () => {
+			const existing = await UserStatusStore.get(read, userId);
+			if (!existing) return;
+			await UserStatusStore.save(persistence, userId, {
+				...existing,
+				cooldownUntil: 0,
+			});
 		});
 	}
 
@@ -206,13 +218,15 @@ export class UserStatusStore {
 		persistence: IPersistence,
 		userId: string,
 	): Promise<void> {
-		const existing = await UserStatusStore.get(read, userId);
-		if (!existing) return;
-		await UserStatusStore.save(persistence, userId, {
-			...existing,
-			spammingLevel: SpammingLevel.Clean,
-			cooldownUntil: 0,
-			flagsAtLevel: 0,
+		await serialize(userId, async () => {
+			const existing = await UserStatusStore.get(read, userId);
+			if (!existing) return;
+			await UserStatusStore.save(persistence, userId, {
+				...existing,
+				spammingLevel: SpammingLevel.Clean,
+				cooldownUntil: 0,
+				flagsAtLevel: 0,
+			});
 		});
 	}
 
@@ -221,15 +235,17 @@ export class UserStatusStore {
 		persistence: IPersistence,
 		userId: string,
 	): Promise<void> {
-		const existing = await UserStatusStore.get(read, userId);
-		if (!existing) return;
-		const prevLevel =
-			PREV_LEVEL[existing.spammingLevel] ?? SpammingLevel.Clean;
-		await UserStatusStore.save(persistence, userId, {
-			...existing,
-			spammingLevel: prevLevel,
-			cooldownUntil: 0,
-			flagsAtLevel: 0,
+		await serialize(userId, async () => {
+			const existing = await UserStatusStore.get(read, userId);
+			if (!existing) return;
+			const prevLevel =
+				PREV_LEVEL[existing.spammingLevel] ?? SpammingLevel.Clean;
+			await UserStatusStore.save(persistence, userId, {
+				...existing,
+				spammingLevel: prevLevel,
+				cooldownUntil: 0,
+				flagsAtLevel: 0,
+			});
 		});
 	}
 }
