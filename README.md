@@ -1,16 +1,13 @@
-<p align="center">
-  <img src="./icon.png" alt="Apps.SpamMonitor icon" width="120" />
-</p>
+![banner](https://res.cloudinary.com/dsdgpiinw/image/upload/v1787151435/gsoc_demo_day.jpg)
 
 # Apps.SpamMonitor - Rocket.Chat App
 
 A comprehensive anti-spam application for Rocket.Chat that automatically detects and flags spam from new users before it reaches your Rocket.Chat community.
 
-Automatically detects and flags spam from new users before it reaches Rocket.Chat's community
-
 ## Installation
 
 ### Prerequisites
+
 - Rocket.Chat Server (v8 or higher)
 - Rocket.Chat Apps CLI (`@rocket.chat/apps-cli`)
 
@@ -20,36 +17,47 @@ Automatically detects and flags spam from new users before it reaches Rocket.Cha
    ```sh
    npm install -g @rocket.chat/apps-cli
    ```
-
 2. **Clone the repository**:
    ```sh
    git clone https://github.com/RocketChat/Apps.SpamMonitor
    cd Apps.SpamMonitor
    ```
-
 3. **Install dependencies**:
    ```sh
    npm install
    ```
-
 4. **Deploy the app**:
    ```sh
    rc-apps deploy --url <rocketchat_url> --username <username> --password <password>
    ```
 
-## Project Timeline
+## Contributing
 
-- [x] Initialise the repo
-- [x] Add gate system with basic command usage of list users flagged and user flags
-- [x] Add cache system
-- [x] Add levels system with customise option and command
-- [x] Add admin level commands with UI
-- [x] Add admin functionalities (vouch, status, reset level)
-- [ ] Add report option to see reports when scheduled
-- [ ] Add AI admin commands
+Before contributing, please read [CONTRIBUTING.md](https://github.com/RocketChat/Apps.SpamMonitor/blob/main/CONTRIBUTING.md) to understand the project scope, and the do's and don'ts for contributions.
+
+### Before opening a PR
+
+1. **Open an issue first**, using the appropriate prefix in the title so it's easy to triage:
+   - `[feat]` — for a new feature
+   - `[bug]` — for a bug report
+   - `[refactor]` — for refactoring work
+
+2. **Lint your code**:
+   ```sh
+   npm run lint
+   ```
+
+3. **Format your code with Prettier**:
+   ```sh
+   npx prettier --config .prettierrc '**.ts' --write
+   ```
+
+Only once the issue is created and your changes are linted and formatted should you open the pull request.
 
 ## Documentation
+
 Here are some links to examples and documentation:
+
 - [Rocket.Chat Apps TypeScript Definitions Documentation](https://rocketchat.github.io/Rocket.Chat.Apps-engine/)
 - [Rocket.Chat Apps TypeScript Definitions Repository](https://github.com/RocketChat/Rocket.Chat.Apps-engine)
 - [Example Rocket.Chat Apps](https://github.com/graywolf336/RocketChatApps)
