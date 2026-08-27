@@ -18,6 +18,7 @@ import {
 	ManageUserActionId,
 } from '../enums/modals/manageUsers';
 import {
+	BlockElementType,
 	LayoutBlockType,
 	SectionBlock,
 	TextObjectType,
@@ -111,7 +112,7 @@ export class SpamMonitorHandler {
 				: '';
 
 		return {
-			type: 'section' as const,
+			type: LayoutBlockType.SECTION,
 			text: {
 				type: TextObjectType.MRKDWN,
 				text: t.SpamMonitorHandlerStrings.userRowLine(
@@ -121,7 +122,7 @@ export class SpamMonitorHandler {
 				),
 			},
 			accessory: {
-				type: 'overflow' as const,
+				type: BlockElementType.OVERFLOW,
 				appId: this.appId,
 				blockId: LIST_OVERFLOW_BLOCK_ID,
 				actionId: ManageUserActionId.OPEN_MANAGE_MODAL,
