@@ -20,7 +20,6 @@ import { sendNotification } from '../lib/utils/notifications';
 import { RoomInteractionStorage } from '../persistence/roomInteraction';
 import {
 	AdminActionMessages,
-	languageNotification,
 	levelConfigNotification,
 	scheduleNotification,
 	scheduleValidationText,

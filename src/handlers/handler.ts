@@ -17,7 +17,12 @@ import {
 	LIST_OVERFLOW_BLOCK_ID,
 	ManageUserActionId,
 } from '../enums/modals/manageUsers';
-import { TextObjectType } from '@rocket.chat/ui-kit';
+import {
+	BlockElementType,
+	LayoutBlockType,
+	SectionBlock,
+	TextObjectType,
+} from '@rocket.chat/ui-kit';
 import { buildLevelConfigOverviewModal } from '../modals/levelOverviewModal';
 import { ScheduleStore } from '../persistence/scheduleReports/scheduleStore';
 import { buildScheduleSetupModal } from '../modals/scheduleReportModal';
@@ -92,7 +97,7 @@ export class SpamMonitorHandler {
 	private buildUserRowBlock(
 		t: Translations,
 		r: UserSpamRecord,
-	): import('@rocket.chat/ui-kit').Block {
+	): SectionBlock {
 		const label =
 			SPAMMING_LEVEL_LABELS[r.spammingLevel] ?? String(r.spammingLevel);
 		const now = Date.now();
@@ -107,7 +112,7 @@ export class SpamMonitorHandler {
 				: '';
 
 		return {
-			type: 'section' as const,
+			type: LayoutBlockType.SECTION,
 			text: {
 				type: TextObjectType.MRKDWN,
 				text: t.SpamMonitorHandlerStrings.userRowLine(
@@ -117,7 +122,7 @@ export class SpamMonitorHandler {
 				),
 			},
 			accessory: {
-				type: 'overflow' as const,
+				type: BlockElementType.OVERFLOW,
 				appId: this.appId,
 				blockId: LIST_OVERFLOW_BLOCK_ID,
 				actionId: ManageUserActionId.OPEN_MANAGE_MODAL,
@@ -150,8 +155,8 @@ export class SpamMonitorHandler {
 
 		const summary = this.buildSummary(t, allRecords);
 
-		const headerBlock = {
-			type: 'section' as const,
+		const headerBlock: SectionBlock = {
+			type: LayoutBlockType.SECTION,
 			text: {
 				type: TextObjectType.MRKDWN,
 				text: t.SpamMonitorHandlerStrings.listHeader(summary, title),
@@ -165,7 +170,7 @@ export class SpamMonitorHandler {
 			.getCreator()
 			.startMessage()
 			.setRoom(this.room)
-			.setBlocks(allBlocks as any);
+			.setBlocks(allBlocks);
 
 		await this.modify
 			.getNotifier()

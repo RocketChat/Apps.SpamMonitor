@@ -152,15 +152,19 @@ export class MessageCache {
 		const cutoff = Date.now() - maxAgeMs;
 		for (const [userId, entries] of this.cache) {
 			const fresh = entries.filter((e) => e.timestamp >= cutoff);
-			fresh.length === 0
-				? this.cache.delete(userId)
-				: this.cache.set(userId, fresh);
+			if (fresh.length === 0) {
+				this.cache.delete(userId);
+			} else {
+				this.cache.set(userId, fresh);
+			}
 		}
 		for (const [userId, timestamps] of this.rateTracker) {
 			const fresh = timestamps.filter((t) => t >= cutoff);
-			fresh.length === 0
-				? this.rateTracker.delete(userId)
-				: this.rateTracker.set(userId, fresh);
+			if (fresh.length === 0) {
+				this.rateTracker.delete(userId);
+			} else {
+				this.rateTracker.set(userId, fresh);
+			}
 		}
 	}
 
