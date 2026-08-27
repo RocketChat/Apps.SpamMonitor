@@ -1,11 +1,10 @@
 import { IUIKitSurfaceViewParam } from '@rocket.chat/apps-engine/definition/accessors';
-import { UIKitSurfaceType } from '@rocket.chat/apps-engine/definition/uikit';
 import {
 	ActionsBlock,
 	ButtonElement,
 	DividerBlock,
+	LayoutBlockType,
 	SectionBlock,
-	TextObjectType,
 } from '@rocket.chat/ui-kit';
 import {
 	UserSpamRecord,
@@ -19,6 +18,13 @@ import {
 } from '../enums/modals/manageUsers';
 import { formatCooldown, formatDate } from '../lib/utils/messageUtils';
 import { Translations } from '../definition/languagepreference';
+import {
+	button,
+	divider,
+	modalShell,
+	mrkdwn,
+	section,
+} from '../lib/utils/UiKitHandler';
 
 // Falls back to a plain label if an action is ever missing from ConfirmActionMeta
 function buttonLabel(
@@ -38,18 +44,14 @@ function buildActionButton(
 	userId: string,
 	style?: ButtonElement['style'],
 ): ButtonElement {
-	return {
-		type: 'button',
+	return button({
 		appId,
 		blockId: BlockId.ACTIONS,
 		actionId: confirmActionId,
-		text: {
-			type: TextObjectType.PLAIN_TEXT,
-			text: buttonLabel(t, labelAction, fallbackLabel),
-		},
+		label: buttonLabel(t, labelAction, fallbackLabel),
 		value: userId,
-		...(style ? { style } : {}),
-	};
+		style,
+	});
 }
 
 export function buildManageUserModal(
@@ -64,51 +66,34 @@ export function buildManageUserModal(
 		record.cooldownUntil > 0 && Date.now() < record.cooldownUntil;
 	const isClean = record.spammingLevel === SpammingLevel.Clean;
 
-	const userInfoBlock: SectionBlock = {
-		type: 'section',
-		blockId: BlockId.USER_INFO,
-		text: {
-			type: TextObjectType.MRKDWN,
-			text: t.ManageUserModalStrings.userLabel(record.username),
-		},
-	};
+	const userInfoBlock = section(
+		t.ManageUserModalStrings.userLabel(record.username),
+		{ blockId: BlockId.USER_INFO },
+	);
 
 	const detailsBlock: SectionBlock = {
-		type: 'section',
+		type: LayoutBlockType.SECTION,
 		blockId: BlockId.DETAILS,
 		fields: [
-			{
-				type: TextObjectType.MRKDWN,
-				text: t.ManageUserModalStrings.spamLevelFieldLabel(levelLabel),
-			},
-			{
-				type: TextObjectType.MRKDWN,
-				text: t.ManageUserModalStrings.cooldownFieldLabel(
+			mrkdwn(t.ManageUserModalStrings.spamLevelFieldLabel(levelLabel)),
+			mrkdwn(
+				t.ManageUserModalStrings.cooldownFieldLabel(
 					formatCooldown(record.cooldownUntil),
 				),
-			},
-			{
-				type: TextObjectType.MRKDWN,
-				text: t.ManageUserModalStrings.lastEscalationFieldLabel(
+			),
+			mrkdwn(
+				t.ManageUserModalStrings.lastEscalationFieldLabel(
 					formatDate(record.lastEscalation),
 				),
-			},
+			),
 		],
 	};
 
-	const dividerBlock: DividerBlock = {
-		type: 'divider',
-		blockId: BlockId.DIVIDER,
-	};
+	const dividerBlock: DividerBlock = divider(BlockId.DIVIDER);
 
-	const actionsHeaderBlock: SectionBlock = {
-		type: 'section',
+	const actionsHeaderBlock = section(t.ManageUserModalStrings.actionsHeader, {
 		blockId: BlockId.ACTIONS_HEADER,
-		text: {
-			type: TextObjectType.MRKDWN,
-			text: t.ManageUserModalStrings.actionsHeader,
-		},
-	};
+	});
 
 	const actionButtons: ButtonElement[] = [
 		buildActionButton(
@@ -156,7 +141,7 @@ export function buildManageUserModal(
 	];
 
 	const actionsBlock: ActionsBlock = {
-		type: 'actions',
+		type: LayoutBlockType.ACTIONS,
 		blockId: BlockId.ACTIONS,
 		elements: actionButtons,
 	};
@@ -169,24 +154,16 @@ export function buildManageUserModal(
 		actionsBlock,
 	];
 
-	return {
+	return modalShell({
 		id: MANAGE_USER_MODAL_ID,
-		type: UIKitSurfaceType.MODAL,
-		title: {
-			type: TextObjectType.PLAIN_TEXT,
-			text: t.ManageUserModalStrings.modalTitle(record.username),
-		},
+		title: t.ManageUserModalStrings.modalTitle(record.username),
 		blocks,
-		close: {
-			type: 'button',
+		close: button({
 			appId,
 			blockId: BlockId.CLOSE,
 			actionId: 'manage_user_close_action',
+			label: t.commonModalText.cancel,
 			style: 'danger',
-			text: {
-				type: TextObjectType.PLAIN_TEXT,
-				text: t.commonModalText.cancel,
-			},
-		},
-	};
+		}),
+	});
 }

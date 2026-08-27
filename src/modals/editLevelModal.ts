@@ -1,13 +1,11 @@
 import { IRead } from '@rocket.chat/apps-engine/definition/accessors';
 import { IUIKitSurfaceViewParam } from '@rocket.chat/apps-engine/definition/accessors';
-import { UIKitSurfaceType } from '@rocket.chat/apps-engine/definition/uikit';
 import {
 	ActionsBlock,
-	ButtonElement,
-	DividerBlock,
+	BlockElementType,
 	InputBlock,
+	LayoutBlockType,
 	PlainTextInputElement,
-	SectionBlock,
 	StaticSelectElement,
 	TextObjectType,
 } from '@rocket.chat/ui-kit';
@@ -29,6 +27,13 @@ import {
 } from '../enums/modals/levelConfig';
 import { Translations } from '../definition/languagepreference';
 import { LevelConfigDiff } from '../definition/editmodal';
+import {
+	button,
+	divider,
+	getState,
+	modalShell,
+	section,
+} from '../lib/utils/UiKitHandler';
 
 export async function buildEditLevelModal(
 	read: IRead,
@@ -48,52 +53,37 @@ export async function buildEditLevelModal(
 		? config.action
 		: allowed[0];
 
-	const headerBlock: SectionBlock = {
-		type: 'section',
-		text: {
-			type: TextObjectType.MRKDWN,
-			text:
-				t.EditLevelModalStrings.headerTitle(levelLabel(level)) +
-				'\n' +
-				t.LevelConfigStrings.headerText,
-		},
-	};
-
-	const divider: DividerBlock = { type: 'divider' };
+	const headerBlock = section(
+		t.EditLevelModalStrings.headerTitle(levelLabel(level)) +
+			'\n' +
+			t.LevelConfigStrings.headerText,
+	);
 
 	const actionButtonsBlock: ActionsBlock = {
-		type: 'actions',
+		type: LayoutBlockType.ACTIONS,
 		blockId: EditLevelBlockId.ACTION_BUTTONS,
 		elements: [
-			{
-				type: 'button',
+			button({
 				appId,
 				blockId: EditLevelBlockId.ACTION_BUTTONS,
 				actionId: EditLevelActionId.BACK_TO_OVERVIEW,
-				text: {
-					type: TextObjectType.PLAIN_TEXT,
-					text: t.EditLevelModalStrings.backToOverviewButton,
-					emoji: true,
-				},
+				label: t.EditLevelModalStrings.backToOverviewButton,
+				emoji: true,
 				value: String(level),
-			} as ButtonElement,
-			{
-				type: 'button',
+			}),
+			button({
 				appId,
 				blockId: EditLevelBlockId.ACTION_BUTTONS,
 				actionId: `${EditLevelActionId.RESET_TO_DEFAULT}_${level}`,
-				text: {
-					type: TextObjectType.PLAIN_TEXT,
-					text: t.EditLevelModalStrings.resetToDefaultButton,
-					emoji: true,
-				},
+				label: t.EditLevelModalStrings.resetToDefaultButton,
+				emoji: true,
 				value: String(level),
-			} as ButtonElement,
+			}),
 		],
 	};
 
 	const actionSelectBlock: InputBlock = {
-		type: 'input',
+		type: LayoutBlockType.INPUT,
 		blockId: EditLevelBlockId.ACTION_SELECT,
 		label: {
 			type: TextObjectType.PLAIN_TEXT,
@@ -101,7 +91,7 @@ export async function buildEditLevelModal(
 			emoji: true,
 		},
 		element: {
-			type: 'static_select',
+			type: BlockElementType.STATIC_SELECT,
 			appId,
 			blockId: EditLevelBlockId.ACTION_SELECT,
 			actionId: EditLevelActionId.ACTION_SELECT,
@@ -122,7 +112,7 @@ export async function buildEditLevelModal(
 	};
 
 	const timeoutBlock: InputBlock = {
-		type: 'input',
+		type: LayoutBlockType.INPUT,
 		blockId: EditLevelBlockId.TIMEOUT_INPUT,
 		optional: true,
 		label: {
@@ -131,7 +121,7 @@ export async function buildEditLevelModal(
 			emoji: true,
 		},
 		element: {
-			type: 'plain_text_input',
+			type: BlockElementType.PLAIN_TEXT_INPUT,
 			appId,
 			blockId: EditLevelBlockId.TIMEOUT_INPUT,
 			actionId: EditLevelActionId.TIMEOUT_INPUT,
@@ -146,7 +136,7 @@ export async function buildEditLevelModal(
 	};
 
 	const messageBlock: InputBlock = {
-		type: 'input',
+		type: LayoutBlockType.INPUT,
 		blockId: EditLevelBlockId.MESSAGE_INPUT,
 		optional: true,
 		label: {
@@ -158,7 +148,7 @@ export async function buildEditLevelModal(
 			text: t.LevelConfigStrings.customNotificationHint,
 		},
 		element: {
-			type: 'plain_text_input',
+			type: BlockElementType.PLAIN_TEXT_INPUT,
 			appId,
 			blockId: EditLevelBlockId.MESSAGE_INPUT,
 			actionId: EditLevelActionId.MESSAGE_INPUT,
@@ -171,45 +161,33 @@ export async function buildEditLevelModal(
 		} as PlainTextInputElement,
 	};
 
-	return {
+	return modalShell({
 		id: `${EDIT_LEVEL_MODAL_ID}_${level}`,
-		type: UIKitSurfaceType.MODAL,
-		title: {
-			type: TextObjectType.PLAIN_TEXT,
-			text: t.EditLevelModalStrings.modalTitle(levelLabel(level)),
-			emoji: true,
-		},
+		title: t.EditLevelModalStrings.modalTitle(levelLabel(level)),
+		titleEmoji: true,
 		blocks: [
 			headerBlock,
-			divider,
+			divider(),
 			actionButtonsBlock,
 			actionSelectBlock,
 			timeoutBlock,
 			messageBlock,
 		],
-		submit: {
-			type: 'button',
+		submit: button({
 			appId,
-			style: 'success',
 			blockId: EditLevelBlockId.SUBMIT_BTN,
 			actionId: `${EditLevelActionId.SUBMIT}_${level}`,
-			text: {
-				type: TextObjectType.PLAIN_TEXT,
-				text: t.commonModalText.submit,
-			},
-		},
-		close: {
-			type: 'button',
+			label: t.commonModalText.submit,
+			style: 'success',
+		}),
+		close: button({
 			appId,
-			style: 'danger',
 			blockId: EditLevelBlockId.CLOSE_BTN,
 			actionId: EditLevelActionId.CLOSE,
-			text: {
-				type: TextObjectType.PLAIN_TEXT,
-				text: t.commonModalText.cancel,
-			},
-		},
-	};
+			label: t.commonModalText.cancel,
+			style: 'danger',
+		}),
+	});
 }
 
 export function parseEditLevelConfig(
@@ -225,9 +203,22 @@ export function parseEditLevelConfig(
 
 	if (!actionBlock && !timeoutBlock && !messageBlock) return undefined;
 
-	const actionRaw = actionBlock?.[EditLevelActionId.ACTION_SELECT];
-	const timeoutRaw = timeoutBlock?.[EditLevelActionId.TIMEOUT_INPUT];
-	const messageRaw = messageBlock?.[EditLevelActionId.MESSAGE_INPUT] ?? '';
+	const actionRaw = getState(
+		state,
+		EditLevelBlockId.ACTION_SELECT,
+		EditLevelActionId.ACTION_SELECT,
+	);
+	const timeoutRaw = getState(
+		state,
+		EditLevelBlockId.TIMEOUT_INPUT,
+		EditLevelActionId.TIMEOUT_INPUT,
+	);
+	const messageRaw =
+		getState(
+			state,
+			EditLevelBlockId.MESSAGE_INPUT,
+			EditLevelActionId.MESSAGE_INPUT,
+		) ?? '';
 
 	const allowed = actionOptionsFor(level);
 	const defaults = DEFAULT_LEVEL_CONFIGS[level];

@@ -3,9 +3,9 @@ import {
 	IPersistenceRead,
 	IUIKitSurfaceViewParam,
 } from '@rocket.chat/apps-engine/definition/accessors';
-import { UIKitSurfaceType } from '@rocket.chat/apps-engine/definition/uikit';
 import {
-	SectionBlock,
+	BlockElementType,
+	LayoutBlockType,
 	StaticSelectElement,
 	TextObjectType,
 } from '@rocket.chat/ui-kit';
@@ -20,6 +20,13 @@ import {
 	LANGUAGE_LABELS,
 	Translations,
 } from '../definition/languagepreference';
+import {
+	button,
+	divider,
+	getState,
+	modalShell,
+	section,
+} from '../lib/utils/UiKitHandler';
 
 export async function buildLanguageSelectModal(
 	persistenceRead: IPersistenceRead,
@@ -35,53 +42,23 @@ export async function buildLanguageSelectModal(
 	);
 	const currentLanguage = await store.getLanguage();
 
-	const headerBlock: SectionBlock = {
-		type: 'section',
-		text: {
-			type: TextObjectType.MRKDWN,
-			text: t.languageModalText.header,
-		},
-	};
+	const headerBlock = section(t.languageModalText.header);
 
-	return {
+	return modalShell({
 		id: LANGUAGE_SELECT_MODAL_ID,
-		type: UIKitSurfaceType.MODAL,
-		title: {
-			type: TextObjectType.PLAIN_TEXT,
-			text: t.languageModalText.title,
-		},
-		submit: {
-			type: 'button',
-			appId,
-			blockId: LanguageBlockId.LANGUAGE_SELECT,
-			actionId: LanguageActionId.LANGUAGE_SELECT,
-			text: {
-				type: TextObjectType.PLAIN_TEXT,
-				text: t.commonModalText.submit,
-			},
-		},
-		close: {
-			type: 'button',
-			appId,
-			blockId: LanguageBlockId.CLOSE_BTN,
-			actionId: LanguageActionId.CLOSE,
-			text: {
-				type: TextObjectType.PLAIN_TEXT,
-				text: t.commonModalText.cancel,
-			},
-		},
+		title: t.languageModalText.title,
 		blocks: [
 			headerBlock,
-			{ type: 'divider' },
+			divider(),
 			{
-				type: 'input',
+				type: LayoutBlockType.INPUT,
 				blockId: LanguageBlockId.LANGUAGE_SELECT,
 				label: {
 					type: TextObjectType.PLAIN_TEXT,
 					text: t.languageModalText.selectLabel,
 				},
 				element: {
-					type: 'static_select',
+					type: BlockElementType.STATIC_SELECT,
 					appId,
 					blockId: LanguageBlockId.LANGUAGE_SELECT,
 					actionId: LanguageActionId.LANGUAGE_SELECT,
@@ -100,16 +77,29 @@ export async function buildLanguageSelectModal(
 				} as StaticSelectElement,
 			},
 		],
-	};
+		submit: button({
+			appId,
+			blockId: LanguageBlockId.LANGUAGE_SELECT,
+			actionId: LanguageActionId.LANGUAGE_SELECT,
+			label: t.commonModalText.submit,
+		}),
+		close: button({
+			appId,
+			blockId: LanguageBlockId.CLOSE_BTN,
+			actionId: LanguageActionId.CLOSE,
+			label: t.commonModalText.cancel,
+		}),
+	});
 }
 
 export function parseLanguageSelection(
 	state: Record<string, Record<string, unknown>>,
 ): Language | undefined {
-	const raw = state[LanguageBlockId.LANGUAGE_SELECT]?.[
-		LanguageActionId.LANGUAGE_SELECT
-	] as string | undefined;
-
+	const raw = getState<string>(
+		state,
+		LanguageBlockId.LANGUAGE_SELECT,
+		LanguageActionId.LANGUAGE_SELECT,
+	);
 	return raw && isLanguage(raw) ? raw : undefined;
 }
 
