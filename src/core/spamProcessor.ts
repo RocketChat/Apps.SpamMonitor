@@ -235,7 +235,7 @@ export class SpamProcessor {
 		hasUrl: boolean;
 		domains: string[];
 	} {
-		const urlRegex = /https?:\/\/([^\/\s]+)/g;
+		const urlRegex = /https?:\/\/([^/\s]+)/g;
 		const domains: string[] = [];
 		let match: RegExpExecArray | null;
 		while ((match = urlRegex.exec(text)) !== null) {

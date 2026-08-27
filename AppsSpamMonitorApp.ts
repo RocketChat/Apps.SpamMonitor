@@ -236,7 +236,6 @@ export class AppsSpamMonitorApp
 		_setting: ISetting,
 		_configurationModify: IConfigurationModify,
 		read: IRead,
-		_http: IHttp,
 	): Promise<void> {
 		await this.loadSettings(read.getEnvironmentReader());
 	}
@@ -274,8 +273,6 @@ export class AppsSpamMonitorApp
 
 	public async checkPreMessageSentPrevent(
 		message: IMessage,
-		_read: IRead,
-		_http: IHttp,
 	): Promise<boolean> {
 		if (!message.sender || !message.room || !message.text) return false;
 		return message.room.type !== RoomType.DIRECT_MESSAGE;
@@ -309,11 +306,7 @@ export class AppsSpamMonitorApp
 		}
 	}
 
-	public async checkPostMessageSent(
-		message: IMessage,
-		_read: IRead,
-		_http: IHttp,
-	): Promise<boolean> {
+	public async checkPostMessageSent(message: IMessage): Promise<boolean> {
 		if (!message.text || message.room.type === RoomType.DIRECT_MESSAGE)
 			return false;
 		return true;
