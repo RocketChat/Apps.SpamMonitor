@@ -4,14 +4,20 @@ import {
 } from '@rocket.chat/apps-engine/definition/accessors';
 import { WhitelistStore } from '../persistence/whiteListStore';
 import { WHITELIST_OVERVIEW_MODAL_ID } from '../enums/whitelist';
-import { UIKitSurfaceType } from '@rocket.chat/apps-engine/definition/uikit';
 import {
+	BlockElementType,
 	ContextBlock,
-	SectionBlock,
+	LayoutBlockType,
 	TextObjectType,
 } from '@rocket.chat/ui-kit';
-import { BlockId } from '../enums/modals/whitelist';
+import { ActionId, BlockId } from '../enums/modals/whitelist';
 import { Translations } from '../definition/languagepreference';
+import {
+	button,
+	divider,
+	modalShell,
+	section,
+} from '../lib/utils/UiKitHandler';
 
 export async function buildWhitelistOverviewModal(
 	read: IRead,
@@ -27,7 +33,7 @@ export async function buildWhitelistOverviewModal(
 	);
 
 	const channelHintBlock: ContextBlock = {
-		type: 'context',
+		type: LayoutBlockType.CONTEXT,
 		blockId: BlockId.WHITELIST_CHANNEL_HINT,
 		elements: [
 			{
@@ -37,38 +43,14 @@ export async function buildWhitelistOverviewModal(
 		],
 	};
 
-	return {
+	return modalShell({
 		id: WHITELIST_OVERVIEW_MODAL_ID,
-		type: UIKitSurfaceType.MODAL,
-		title: {
-			type: TextObjectType.PLAIN_TEXT,
-			text: t.whitelistModalText.whitelistModalTitle,
-		},
-		submit: {
-			type: 'button',
-			appId,
-			blockId: BlockId.WHITELIST_SAVE,
-			actionId: 'whitelist_save',
-			text: {
-				type: TextObjectType.PLAIN_TEXT,
-				text: t.commonModalText.save,
-			},
-		},
-		close: {
-			type: 'button',
-			appId,
-			blockId: BlockId.WHITELIST_CLOSE,
-			actionId: 'whitelist_close',
-			text: {
-				type: TextObjectType.PLAIN_TEXT,
-				text: t.commonModalText.cancel,
-			},
-		},
+		title: t.whitelistModalText.whitelistModalTitle,
 		blocks: [
-			textSection(t.whitelistModalText.whitelistModalSubTitle),
-			{ type: 'divider' },
+			section(t.whitelistModalText.whitelistModalSubTitle),
+			divider(),
 			{
-				type: 'input',
+				type: LayoutBlockType.INPUT,
 				blockId: BlockId.WHITELIST_CHANNEL_INPUT,
 				optional: true,
 				label: {
@@ -76,10 +58,10 @@ export async function buildWhitelistOverviewModal(
 					text: t.whitelistModalText.channelListLabel,
 				},
 				element: {
-					type: 'plain_text_input',
+					type: BlockElementType.PLAIN_TEXT_INPUT,
 					appId,
 					blockId: BlockId.WHITELIST_CHANNEL_INPUT,
-					actionId: 'channel_list_input',
+					actionId: ActionId.CHANNEL_LIST_INPUT,
 					multiline: true,
 					initialValue: roomLabels.join(', '),
 					placeholder: {
@@ -90,7 +72,7 @@ export async function buildWhitelistOverviewModal(
 			},
 			channelHintBlock,
 			{
-				type: 'input',
+				type: LayoutBlockType.INPUT,
 				blockId: BlockId.WHITELIST_ROLE_INPUT,
 				optional: true,
 				label: {
@@ -98,10 +80,10 @@ export async function buildWhitelistOverviewModal(
 					text: t.whitelistModalText.roleListLabel,
 				},
 				element: {
-					type: 'plain_text_input',
+					type: BlockElementType.PLAIN_TEXT_INPUT,
 					appId,
 					blockId: BlockId.WHITELIST_ROLE_INPUT,
-					actionId: 'role_list_input',
+					actionId: ActionId.ROLE_LIST_INPUT,
 					multiline: true,
 					initialValue: roleIds.join(', '),
 					placeholder: {
@@ -111,11 +93,19 @@ export async function buildWhitelistOverviewModal(
 				},
 			},
 		],
-	};
-}
-
-function textSection(text: string): SectionBlock {
-	return { type: 'section', text: { type: TextObjectType.MRKDWN, text } };
+		submit: button({
+			appId,
+			blockId: BlockId.WHITELIST_SAVE,
+			actionId: ActionId.WHITELIST_SAVE,
+			label: t.commonModalText.save,
+		}),
+		close: button({
+			appId,
+			blockId: BlockId.WHITELIST_CLOSE,
+			actionId: ActionId.WHITELIST_CLOSE,
+			label: t.commonModalText.cancel,
+		}),
+	});
 }
 
 export function parseWhitelistChannelListInput(
