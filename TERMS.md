@@ -12,7 +12,7 @@ Apps.SpamMonitor is a free, open-source anti-spam App for Rocket.Chat. It runs i
 
 ## 3. License
 
-> **TODO before publishing:** this project does not yet have a chosen license. Confirm with Alfredo which license the repository will use (Rocket.Chat's own repos commonly use MIT), add a `LICENSE` file to the repo, and replace this section with the confirmed license name and a link to it. The Marketplace submission should not go out with this section still open.
+Apps.SpamMonitor is open-source software licensed under the [MIT License](./LICENSE). You are free to use, modify, and distribute it in accordance with the terms of that license.
 
 ## 4. Cost
 
